@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e2650"/><stop offset="1" stop-color="#0d1124"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#g)"/><g transform="translate(256 256) scale(1.0) translate(-256 -256)">
+  <path d="M96 252 L256 118 L416 252" fill="none" stroke="#ffc340" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="176" cy="262" r="31" fill="#fff3d1"/><path d="M128.0 404 V352.0 a48.0 48.0 0 0 1 96 0 V404 Z" fill="#fff3d1"/>
+  <circle cx="336" cy="262" r="31" fill="#fff3d1"/><path d="M288.0 404 V352.0 a48.0 48.0 0 0 1 96 0 V404 Z" fill="#fff3d1"/>
+  <circle cx="229" cy="314" r="23" fill="#ffc340" stroke="#151b3a" stroke-width="8" paint-order="stroke"/><path d="M196.0 404 V379.0 a33.0 33.0 0 0 1 66 0 V404 Z" fill="#ffc340" stroke="#151b3a" stroke-width="8" paint-order="stroke"/>
+  <circle cx="283" cy="314" r="23" fill="#ffc340" stroke="#151b3a" stroke-width="8" paint-order="stroke"/><path d="M250.0 404 V379.0 a33.0 33.0 0 0 1 66 0 V404 Z" fill="#ffc340" stroke="#151b3a" stroke-width="8" paint-order="stroke"/>
+</g></svg>

@@ -416,7 +416,12 @@ R.details = () => {
     <button class="list row" data-go="setup/edit"><span class="lead">${ic('house')}</span><div class="grow"><b>${L('Our household', 'Nuestro hogar')}</b><small>${sum}</small></div>${ic('chevron-right', 'chev')}</button>
     <p class="muted" style="padding:0 4px">${L("Saved on this phone only. Fill these in on every adult's phone.", 'Se guarda solo en este teléfono. Llénalo en el teléfono de cada adulto.')}</p>
     <div class="list">${infoFields().map(([k, t]) => `<label class="field"><span>${t}</span><input id="f-${k}" data-k="${k}" value="${esc(info[k] || '')}" autocomplete="off" ${k === 'phone' ? 'inputmode="tel"' : ''}></label>`).join('')}</div>
-    <p class="muted small" style="padding:0 4px">${L('Huddle Ready is a planning aid, not medical advice. In an emergency, call 911.', 'Huddle Ready es una ayuda para planear, no es consejo médico. En una emergencia, llama al 911.')} ${L('Icons: Lucide (ISC). Illustrations: Microsoft Fluent Emoji (MIT).', 'Íconos: Lucide (ISC). Ilustraciones: Microsoft Fluent Emoji (MIT).')}</p></div>`;
+    <p class="muted small" style="padding:0 4px">${L('Huddle Ready is a planning aid, not medical advice. In an emergency, call 911.', 'Huddle Ready es una ayuda para planear, no es consejo médico. En una emergencia, llama al 911.')}</p>
+    <details class="about"><summary>${ic('info')}${L('About Huddle Ready', 'Acerca de Huddle Ready')}</summary>
+      <p>${L('A free outage plan for Central Texas families. No account, no ads, and nothing you type leaves this phone.', 'Un plan gratis para apagones para familias del centro de Texas. Sin cuenta, sin anuncios, y nada de lo que escribes sale de este teléfono.')}</p>
+      <p><a href="../" target="_blank" rel="noopener">${L('Website, safety and privacy', 'Sitio web, seguridad y privacidad')}</a> · <a href="mailto:hello@huddleready.com">hello@huddleready.com</a></p>
+      <p class="muted small">${L('Credits: icons by Lucide (ISC license); illustrations by Microsoft Fluent Emoji (MIT license); voices made with the open Kokoro model and eSpeak NG.', 'Créditos: íconos de Lucide (licencia ISC); ilustraciones de Microsoft Fluent Emoji (licencia MIT); voces hechas con el modelo abierto Kokoro y eSpeak NG.')}</p>
+    </details></div>`;
   bindLang(R.details);
   let t; view.querySelectorAll('[data-k]').forEach(inp => inp.oninput = () => { info[inp.dataset.k] = inp.value.trim(); store.set('info', info); clearTimeout(t); t = setTimeout(() => toast(L('Saved', 'Guardado')), 600); });
 };

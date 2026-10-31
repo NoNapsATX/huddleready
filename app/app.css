@@ -512,3 +512,15 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 .cat-name b{font-size:1rem;line-height:1.2;overflow-wrap:anywhere}
 .cat-name small{color:var(--muted);font-size:.85rem}
 .list .row small .ic,.list .row small svg{width:14px;height:14px;vertical-align:-2px}
+/* skills strip on the home screen */
+.sk-strip{display:grid;gap:8px;min-width:0}
+.sk-head{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px}
+.sk-head b{font-size:1.05rem}
+.sk-row{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 10px;margin:0 -2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.sk-row::-webkit-scrollbar{display:none}
+.sk-card{flex:0 0 150px;scroll-snap-align:start;border:0;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);font:inherit;color:var(--ink);padding:6px 6px 10px;text-align:left;display:grid;gap:6px}
+.sk-card .cover{display:block;width:100%;height:auto;aspect-ratio:320/230;border-radius:10px;background:#f7f8fc}
+.sk-name{display:flex;gap:8px;align-items:center;padding:0 2px}
+.sk-name b{font-size:.92rem;line-height:1.15}
+.sk-card small{color:var(--muted);font-size:.8rem;padding:0 4px}
+:root.big .sk-card{flex-basis:180px}

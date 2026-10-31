@@ -204,6 +204,12 @@ function readiness() {
 }
 const greet = () => { const f = (H().family || '').trim(); return f ? L(`Hi, ${esc(f)} family`, `Hola, familia ${esc(f)}`) : L('Hi there', 'Hola'); };
 
+function skillStrip(out) {
+  const C = window.SKILL_CATS || [], S = window.SKILLS || [];
+  const order = out ? ['aid', 'living', 'home', 'fire', 'knots'] : C.map(c => c[0]);
+  return `<section class="sk-strip" aria-label="${L('Skills', 'Habilidades')}"><div class="sk-head"><b>${out ? L('How-tos with pictures', 'Guías con dibujos') : L('Skills and how-tos', 'Habilidades y guías')}</b><button class="linkish" data-go="skills">${L('See all', 'Ver todo')}</button></div>
+    <div class="sk-row">${order.map(id => C.find(c => c[0] === id)).filter(Boolean).map(([cat, icn, name, tone]) => `<button class="sk-card t-${tone}" data-go="skills/c-${cat}">${fig(COVER[cat], 'cover')}<span class="sk-name"><span class="qa-ic sm t-${tone}">${ic(icn)}</span><b>${T(name)}</b></span><small>${S.filter(x => x.cat === cat).length} ${L('guides', 'guías')}</small></button>`).join('')}</div></section>`;
+}
 R.home = () => {
   const o = outage();
   const top = `<div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div><div class="brand">${greet()}</div><div class="status ${swOK ? 'ok' : ''}" id="status"><i></i><span>${swOK ? L('Works offline', 'Funciona sin internet') : L('Saving for offline…', 'Guardando para usar sin internet…')}</span></div></div>
@@ -219,10 +225,12 @@ R.home = () => {
       <div class="row2">${o.done ? `<button class="btn ghost" data-go="stay">${L('Stay or go?', '¿Quedarse o irse?')}</button>` : `<button class="btn" data-go="outage">${L('Continue checklist', 'Seguir la lista')}</button>`}<button class="btn ghost" id="end">${L('Power is back', 'Ya volvió la luz')}</button></div></div>
       <div class="row2"><a class="call" href="tel:911">${ic('siren')}<div><b>911</b><small>${L('Emergency', 'Emergencia')}</small></div></a>${u.phone ? `<a class="call" href="${tel(u.phone)}">${ic('phone')}<div><b>${L('Outage', 'Apagón')}</b><small>${esc(u.phone)}</small></div></a>` : ''}</div>
       ${H().cross ? `<div class="where">${ic('map-pin')}<span>${L('Tell 911: we\'re near', 'Dile al 911: estamos cerca de')} <b>${esc(H().cross)}</b></span></div>` : ''}
-      <div class="qa-row">${qa('stay', 'door-open', L('Stay or go', 'Quedarse o irse'), 'blue')}${qa('food', 'refrigerator', L('Food clock', 'Reloj de comida'), 'amber')}${qa('skills', 'heart-pulse', L('First aid', 'Primeros auxilios'), 'red')}</div>`;
+      <div class="qa-row">${qa('stay', 'door-open', L('Stay or go', 'Quedarse o irse'), 'blue')}${qa('food', 'refrigerator', L('Food clock', 'Reloj de comida'), 'amber')}${qa('skills/c-aid', 'heart-pulse', L('First aid', 'Primeros auxilios'), 'red')}</div>
+      ${skillStrip(true)}`;
   } else {
     const r = readiness(), pct = Math.round(r.done / r.total * 100);
     body = `<button class="sos" id="sos">${ic('zap-off')}<div><b>${L('Power is out', 'Se fue la luz')}</b><span>${L('Start the first 10 minutes', 'Empieza los primeros 10 minutos')}</span></div>${ic('chevron-right', 'go')}</button>
+      ${skillStrip(false)}
       <section class="ready" aria-label="${L('Readiness', 'Preparación')}">
         <div class="ready-top"><div class="ring" style="--p:${pct}"><span>${r.done}<small>/${r.total}</small></span></div>
           <div><b>${r.done === r.total ? L("You're ready", 'Están listos') : L('Your readiness', 'Su preparación')}</b><small>${r.done === r.total ? L('Keep it fresh with the twice-a-year check.', 'Manténganlo al día con la revisión de cada seis meses.') : L(`${r.total - r.done} steps to go`, `Faltan ${r.total - r.done} pasos`)}</small></div></div>
@@ -504,7 +512,7 @@ R.calls = () => {
 /* ---------- skills: how-to guides ---------- */
 const T = pair => lang === 'es' ? pair[1] : pair[0];
 const guideSeg = cur => `<div class="seg" role="group" aria-label="${L('Guides', 'Guías')}"><button aria-pressed="${cur === 'plan'}" data-go="plan">${L('Our plan', 'Nuestro plan')}</button><button aria-pressed="${cur === 'skills'}" data-go="skills">${L('Skills', 'Habilidades')}</button></div>`;
-const COVER = { aid: 'cpr', fire: 'firelay', knots: 'bowline-4', home: 'lantern', living: 'toilet' };
+const COVER = { aid: 'cpr', fire: 'firelay', knots: 'bowline-4', home: 'lantern', living: 'foodorder' };
 const fig = (n, cls = 'fig') => `<img class="${cls}" src="img/skills/${n}${lang === 'es' ? '-es' : ''}.svg" alt="" loading="lazy" decoding="async">`;
 const skillCat = c => (window.SKILL_CATS || []).find(x => x[0] === c);
 R.skills = rest => {

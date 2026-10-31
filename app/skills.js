@@ -6,7 +6,7 @@ window.SKILL_CATS = [
   ['fire', 'flame', ['Fire and cooking', 'Fuego y cocina'], 'amber'],
   ['knots', 'link', ['Knots', 'Nudos'], 'blue'],
   ['home', 'lamp', ['Light, warmth and water', 'Luz, calor y agua'], 'amber'],
-  ['living', 'sofa', ['Living at home for days', 'Vivir en casa por días'], 'green']
+  ['living', 'sofa', ['Home without power', 'En casa sin luz'], 'green']
 ];
 window.SKILLS = [
   /* ---------------- first aid ---------------- */
@@ -308,7 +308,7 @@ window.SKILLS = [
     dont: [['Don\'t wash with flood water. Keep cuts clean and covered; see a doctor if one gets red, hot or swollen.', 'No se laven con agua de inundación. Mantengan las cortadas limpias y tapadas; vean al médico si se ponen rojas, calientes o hinchadas.']],
     tip: ['Baby wipes and dry shampoo make day three feel a lot better.', 'Las toallitas húmedas y el champú en seco hacen que el tercer día se sienta mucho mejor.'],
     src: 'CDC' },
-  { id: 'foodorder', cat: 'living', icon: 'refrigerator',
+  { id: 'foodorder', figs: {1: 'foodorder'}, cat: 'living', icon: 'refrigerator',
     title: ['Keep food safe and eat it in the right order', 'Mantener la comida segura y comerla en orden'],
     when: ['The power has been out for more than a couple of hours.', 'La luz lleva más de un par de horas apagada.'],
     steps: [
@@ -321,7 +321,7 @@ window.SKILLS = [
     dont: [['Never taste food to check it. When in doubt, throw it out.', 'Nunca prueben la comida para ver si está buena. Si tienen duda, tírenla.']],
     tip: ['The Food clock screen in this app counts the hours for you.', 'La pantalla Reloj de comida de esta app les cuenta las horas.'],
     src: 'USDA' },
-  { id: 'dishes', cat: 'living', icon: 'utensils',
+  { id: 'dishes', figs: {3: 'dishes'}, cat: 'living', icon: 'utensils',
     title: ['Meals and dishes with little water', 'Comidas y trastes con poca agua'],
     when: ['Several days with no stove or no running water.', 'Varios días sin estufa o sin agua corriente.'],
     steps: [
@@ -333,7 +333,7 @@ window.SKILLS = [
     dont: [['Don\'t cook indoors on a grill or camp stove. Throw out canned food with bulging, leaking or dented seams.', 'No cocinen adentro con parrilla o estufa de campamento. Tiren las latas infladas, que gotean o con las orillas abolladas.']],
     tip: ['Keep a manual can opener in the kit. It\'s easy to forget.', 'Tengan un abrelatas manual en el kit. Es fácil olvidarlo.'],
     src: 'Ready.gov, USDA' },
-  { id: 'trash', cat: 'living', icon: 'trash',
+  { id: 'trash', figs: {1: 'trash'}, cat: 'living', icon: 'trash',
     title: ['Trash and smells', 'Basura y olores'],
     when: ['Trash pickup is late and bags are piling up.', 'La basura no pasa y se juntan las bolsas.'],
     steps: [
@@ -345,7 +345,7 @@ window.SKILLS = [
     dont: [['Never burn trash. Keep spoiled food away from pets.', 'Nunca quemen la basura. Mantengan la comida echada a perder lejos de las mascotas.']],
     tip: ['Check your city\'s site or 311 for changed pickup days after a storm.', 'Revisen la página de su ciudad o llamen al 311 para saber si cambiaron los días de recolección.'],
     src: 'Ready.gov' },
-  { id: 'laundry', cat: 'living', icon: 'shirt',
+  { id: 'laundry', figs: {2: 'laundry'}, cat: 'living', icon: 'shirt',
     title: ['Bucket laundry', 'Lavar ropa en cubeta'],
     when: ['Day three or later, and you\'re out of clean socks and underwear.', 'El tercer día o después, y ya no hay calcetines ni ropa interior limpios.'],
     steps: [
@@ -357,7 +357,7 @@ window.SKILLS = [
     dont: [['Save drinking water first. Use the soapy water afterward to flush the toilet.', 'Primero guarden el agua para tomar. Usen el agua jabonosa después para jalarle al baño.']],
     tip: ['Pack a fresh set of socks and underwear per person in the go-bag.', 'Pongan un cambio de calcetines y ropa interior por persona en la mochila.'],
     src: 'Ready.gov' },
-  { id: 'batteries', cat: 'living', icon: 'battery-charging',
+  { id: 'batteries', figs: {1: 'batteries'}, cat: 'living', icon: 'battery-charging',
     title: ['Make phones and batteries last', 'Hacer que duren los teléfonos y las baterías'],
     when: ['The outage could last more than a day.', 'El apagón podría durar más de un día.'],
     steps: [
@@ -370,7 +370,7 @@ window.SKILLS = [
     dont: [['Don\'t fall asleep in a running car. Don\'t leave power banks charging on a bed or couch.', 'No se duerman en un carro prendido. No dejen baterías cargando sobre la cama o el sillón.']],
     tip: ['Write key numbers on paper too. The fridge sheet in this app has them.', 'Escriban los números importantes también en papel. La hoja del refri de esta app los tiene.'],
     src: 'Ready.gov, CDC' },
-  { id: 'kidsdays', cat: 'living', icon: 'puzzle',
+  { id: 'kidsdays', figs: {2: 'kidsdays'}, cat: 'living', icon: 'puzzle',
     title: ['Keeping kids calm and busy', 'Mantener a los niños tranquilos y ocupados'],
     when: ['Day two of an outage and everyone is getting restless.', 'El segundo día del apagón y todos están inquietos.'],
     steps: [
@@ -383,7 +383,7 @@ window.SKILLS = [
     dont: [['No candles in kids\' rooms. Keep kids away from generators, grills and camp stoves.', 'Nada de velas en los cuartos de los niños. Mantengan a los niños lejos de generadores, parrillas y estufas de campamento.']],
     tip: ['Kids Mode in this app walks them through it with a friendly voice.', 'El Modo niños de esta app los guía con una voz amigable.'],
     src: 'Ready.gov, American Academy of Pediatrics' },
-  { id: 'tricks', cat: 'living', icon: 'sparkles',
+  { id: 'tricks', figs: {1: 'tricks'}, cat: 'living', icon: 'sparkles',
     title: ['Little tricks that help', 'Trucos pequeños que ayudan'],
     when: ['Any outage. Most take a minute.', 'Cualquier apagón. Casi todos toman un minuto.'],
     steps: [

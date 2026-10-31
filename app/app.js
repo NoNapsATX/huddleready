@@ -205,10 +205,7 @@ function readiness() {
 const greet = () => { const f = (H().family || '').trim(); return f ? L(`Hi, ${esc(f)} family`, `Hola, familia ${esc(f)}`) : L('Hi there', 'Hola'); };
 
 function skillStrip(out) {
-  const C = window.SKILL_CATS || [], S = window.SKILLS || [];
-  const order = out ? ['aid', 'living', 'home', 'fire', 'knots'] : C.map(c => c[0]);
-  return `<section class="sk-strip" aria-label="${L('Skills', 'Habilidades')}"><div class="sk-head"><b>${out ? L('How-tos with pictures', 'Guías con dibujos') : L('Skills and how-tos', 'Habilidades y guías')}</b><button class="linkish" data-go="skills">${L('See all', 'Ver todo')}</button></div>
-    <div class="sk-row">${order.map(id => C.find(c => c[0] === id)).filter(Boolean).map(([cat, icn, name, tone]) => `<button class="sk-card t-${tone}" data-go="skills/c-${cat}">${fig(COVER[cat], 'cover')}<span class="sk-name"><span class="qa-ic sm t-${tone}">${ic(icn)}</span><b>${T(name)}</b></span><small>${S.filter(x => x.cat === cat).length} ${L('guides', 'guías')}</small></button>`).join('')}</div></section>`;
+  return `<button class="sk-btn" data-go="skills"><span class="qa-ic t-green">${ic('book-open')}</span><div class="grow"><b>${L('Skills and how-tos', 'Habilidades y guías')}</b><small>${L('First aid, fire, knots, light, home', 'Primeros auxilios, fuego, nudos, luz, casa')}</small></div>${ic('chevron-right', 'chev')}</button>`;
 }
 R.home = () => {
   const o = outage();

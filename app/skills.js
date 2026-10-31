@@ -1,0 +1,283 @@
+/* Huddle Ready skills: short how-to guides. Each text is [English, Spanish].
+   Sources: American Red Cross, American Heart Association, Stop the Bleed (American College of Surgeons),
+   CDC, NFPA, Ready.gov. These are reminders, not training: take a CPR and first-aid class. */
+window.SKILL_CATS = [
+  ['aid', 'heart-pulse', ['First aid', 'Primeros auxilios'], 'red'],
+  ['home', 'house', ['Light, warmth and water', 'Luz, calor y agua'], 'amber'],
+  ['fire', 'flame', ['Fire and cooking', 'Fuego y cocina'], 'amber'],
+  ['knots', 'link', ['Knots', 'Nudos'], 'blue'],
+  ['safety', 'shield', ['Signals and home safety', 'Señales y seguridad en casa'], 'green']
+];
+window.SKILLS = [
+  /* ---------------- first aid ---------------- */
+  { id: 'cpr', cat: 'aid', icon: 'heart-pulse',
+    title: ['Hands-only CPR (adults and teens)', 'RCP solo con las manos (adultos y adolescentes)'],
+    when: ['Someone collapses, won\'t wake up, and isn\'t breathing normally (or only gasping).', 'Alguien se desmaya, no despierta y no respira normal (o solo jadea).'],
+    steps: [
+      ['Call 911 and put the phone on speaker. Send someone for an AED (defibrillator) if one is nearby.', 'Llama al 911 y pon el teléfono en altavoz. Manda a alguien por un DEA (desfibrilador) si hay uno cerca.'],
+      ['Kneel beside them. Put the heel of one hand in the center of the chest, the other hand on top.', 'Arrodíllate a su lado. Pon la base de una mano en el centro del pecho y la otra mano encima.'],
+      ['Arms straight, shoulders over your hands. Push hard and fast: at least 2 inches (5 cm) deep, 100 to 120 times a minute.', 'Brazos rectos, hombros sobre las manos. Empuja fuerte y rápido: al menos 2 pulgadas (5 cm) de profundidad, de 100 a 120 veces por minuto.'],
+      ['Keep the beat of "Stayin\' Alive". Let the chest come all the way back up between pushes.', 'Lleva el ritmo de la canción "Stayin\' Alive". Deja que el pecho suba por completo entre cada empujón.'],
+      ['Don\'t stop until help takes over, an AED tells you to, or they start breathing. Switch with another person every 2 minutes if you can.', 'No pares hasta que llegue ayuda, el DEA te lo indique o empiece a respirar. Si puedes, cambia con otra persona cada 2 minutos.']
+    ],
+    dont: [['For a child or baby, stay on the line: the 911 dispatcher will coach you. Babies get 2 fingers, not hands.', 'Para un niño o bebé, sigue en la línea: el operador del 911 te guía. A los bebés se les usan 2 dedos, no las manos.']],
+    tip: ['A 3-hour CPR class teaches this for kids and babies too. It\'s the best prep step there is.', 'Una clase de RCP de 3 horas enseña esto también para niños y bebés. Es la mejor preparación que hay.'],
+    src: 'American Heart Association' },
+  { id: 'choking', cat: 'aid', icon: 'wind',
+    title: ['Choking: adults and kids over 1', 'Atragantamiento: adultos y niños mayores de 1 año'],
+    when: ['They can\'t cough, talk, cry or breathe, or hold their throat. If they can cough, let them keep coughing and stay with them.', 'No puede toser, hablar, llorar ni respirar, o se agarra el cuello. Si puede toser, déjalo toser y quédate con él.'],
+    steps: [
+      ['Have someone call 911.', 'Que alguien llame al 911.'],
+      ['Stand to the side and slightly behind them (kneel behind a small child). Support their chest with one arm and lean them forward.', 'Párate a un lado y un poco atrás (arrodíllate detrás de un niño chico). Sostén su pecho con un brazo e inclínalo hacia adelante.'],
+      ['Give 5 firm back blows between the shoulder blades with the heel of your hand.', 'Da 5 golpes firmes en la espalda, entre los omóplatos, con la base de la mano.'],
+      ['Then 5 abdominal thrusts: stand behind them, make a fist just above the belly button, grab it with your other hand, and pull in and up quickly.', 'Luego 5 compresiones abdominales: párate detrás, pon el puño justo arriba del ombligo, agárralo con la otra mano y jala hacia adentro y hacia arriba rápido.'],
+      ['Repeat 5 and 5 until the object comes out or they can cough, talk or breathe.', 'Repite 5 y 5 hasta que salga el objeto o pueda toser, hablar o respirar.'],
+      ['If they pass out, lower them to the floor and start CPR.', 'Si se desmaya, bájalo al piso y empieza la RCP.']
+    ],
+    dont: [['Don\'t sweep inside the mouth unless you can see the object. Never hold a child upside down.', 'No metas el dedo en la boca a menos que veas el objeto. Nunca cuelgues a un niño de cabeza.'], ['Pregnant or too large to reach around: push on the center of the chest instead of the belly.', 'Embarazada o muy grande para abrazar: empuja en el centro del pecho en lugar del abdomen.']],
+    tip: ['Alone and choking? Call 911 and leave the line open, then press your belly hard against the back of a chair.', '¿Te atragantas y estás solo? Llama al 911, deja la línea abierta y presiona tu abdomen con fuerza contra el respaldo de una silla.'],
+    src: 'American Red Cross' },
+  { id: 'choking-baby', cat: 'aid', icon: 'baby',
+    title: ['Choking: babies under 1', 'Atragantamiento: bebés menores de 1 año'],
+    when: ['The baby can\'t cough, cry or breathe, or is turning blue.', 'El bebé no puede toser, llorar ni respirar, o se está poniendo morado.'],
+    steps: [
+      ['Have someone call 911.', 'Que alguien llame al 911.'],
+      ['Lay the baby face-down along your forearm, head lower than the body, holding the jaw in your hand. Rest your arm on your thigh.', 'Acuesta al bebé boca abajo sobre tu antebrazo, con la cabeza más abajo que el cuerpo, sosteniendo la mandíbula con la mano. Apoya el brazo en tu muslo.'],
+      ['Give 5 firm back blows between the shoulder blades with the heel of your hand.', 'Da 5 golpes firmes entre los omóplatos con la base de la mano.'],
+      ['Turn the baby face-up on your other arm, head still lower. Give 5 chest thrusts with 2 fingers in the center of the chest, just below the nipple line, about 1½ inches deep.', 'Voltea al bebé boca arriba sobre tu otro brazo, con la cabeza todavía más abajo. Da 5 compresiones en el pecho con 2 dedos en el centro, justo abajo de la línea de los pezones, como 1½ pulgadas de profundidad.'],
+      ['Repeat 5 back blows and 5 chest thrusts until the object comes out or the baby cries or breathes.', 'Repite 5 golpes y 5 compresiones hasta que salga el objeto o el bebé llore o respire.'],
+      ['If the baby stops responding, start infant CPR while 911 coaches you.', 'Si el bebé deja de responder, empieza la RCP para bebés mientras el 911 te guía.']
+    ],
+    dont: [['Never do abdominal thrusts on a baby. Don\'t put your finger in the mouth unless you see the object.', 'Nunca hagas compresiones abdominales a un bebé. No metas el dedo en la boca a menos que veas el objeto.']],
+    tip: ['Cut grapes, hot dogs and similar foods lengthwise for kids under 4.', 'Corta a lo largo las uvas, salchichas y comida parecida para niños menores de 4 años.'],
+    src: 'American Red Cross' },
+  { id: 'bleeding', cat: 'aid', icon: 'droplet',
+    title: ['Stop serious bleeding', 'Detener un sangrado grave'],
+    when: ['Blood is spurting, pooling, or soaking through cloth.', 'La sangre sale a chorros, se junta o traspasa la tela.'],
+    steps: [
+      ['Make sure it\'s safe for you, then call 911.', 'Asegúrate de que es seguro para ti y llama al 911.'],
+      ['Cover the wound with a clean cloth or gauze and press down hard with both hands. Keep pressing; don\'t lift to check.', 'Cubre la herida con una tela limpia o gasa y presiona fuerte con las dos manos. Sigue presionando; no levantes para revisar.'],
+      ['Deep wound? Pack it: push gauze or cloth into the wound until it\'s full, then press hard on top.', '¿Herida profunda? Rellénala: mete gasa o tela en la herida hasta llenarla y presiona fuerte encima.'],
+      ['Arm or leg still bleeding badly? Put a tourniquet 2 to 3 inches above the wound, never on a joint. Tighten until the bleeding stops.', '¿El brazo o la pierna sigue sangrando mucho? Pon un torniquete 2 o 3 pulgadas arriba de la herida, nunca sobre una articulación. Apriétalo hasta que pare el sangrado.'],
+      ['Write down the time you put the tourniquet on, and leave it on for the paramedics.', 'Anota la hora en que pusiste el torniquete y déjalo puesto para los paramédicos.']
+    ],
+    dont: [['Don\'t remove soaked cloth; add more on top. A belt makes a poor tourniquet; keep a real one (CAT or SOF-T) in your kit.', 'No quites la tela empapada; agrega más encima. Un cinturón no sirve bien como torniquete; ten uno de verdad (CAT o SOF-T) en el botiquín.']],
+    tip: ['Free 1-hour Stop the Bleed classes are offered around Austin. Search "Stop the Bleed class Austin".', 'En Austin hay clases gratis de 1 hora de Stop the Bleed. Busca "Stop the Bleed class Austin".'],
+    src: 'Stop the Bleed' },
+  { id: 'burns', cat: 'aid', icon: 'flame',
+    title: ['Burns', 'Quemaduras'],
+    when: ['Skin touched something hot: a stove, candle, hot water or a camp stove.', 'La piel tocó algo caliente: estufa, vela, agua caliente o estufa de campamento.'],
+    steps: [
+      ['Cool the burn under cool running water for 10 to 20 minutes. Stored water poured slowly works too.', 'Enfría la quemadura con agua fresca corriendo de 10 a 20 minutos. También sirve agua guardada echada despacio.'],
+      ['Take off rings, watches and tight clothing near the burn before it swells.', 'Quita anillos, relojes y ropa apretada cerca de la quemadura antes de que se hinche.'],
+      ['Cover loosely with a clean, dry cloth or plastic wrap.', 'Cubre flojo con una tela limpia y seca o plástico para envolver.'],
+      ['Get medical care for large burns, burns on the face, hands, feet or groin, any burn on a young child, or blistered skin bigger than your palm.', 'Busca atención médica para quemaduras grandes, en la cara, manos, pies o ingle, cualquier quemadura en un niño chico, o ampollas más grandes que tu palma.']
+    ],
+    dont: [['No ice, butter, toothpaste or ointment. Don\'t pop blisters.', 'Nada de hielo, mantequilla, pasta de dientes ni pomada. No revientes las ampollas.']],
+    tip: ['Keep kids out of the kitchen and away from any camp stove; a toddler gate helps.', 'Mantén a los niños fuera de la cocina y lejos de cualquier estufa de campamento; una reja para niños ayuda.'],
+    src: 'American Red Cross' },
+  { id: 'recovery', cat: 'aid', icon: 'bed',
+    title: ['Recovery position', 'Posición de recuperación'],
+    when: ['Someone is breathing but won\'t wake up, and you have to wait for help or step away.', 'Alguien respira pero no despierta, y tienes que esperar ayuda o alejarte un momento.'],
+    steps: [
+      ['Call 911. Kneel beside them while they lie on their back.', 'Llama al 911. Arrodíllate a su lado mientras está boca arriba.'],
+      ['Put the arm nearest you out at a right angle, palm up.', 'Pon el brazo más cercano a ti en ángulo recto, con la palma hacia arriba.'],
+      ['Bring the far arm across the chest and hold the back of that hand against their near cheek.', 'Cruza el otro brazo sobre el pecho y sostén el dorso de esa mano contra su mejilla cercana.'],
+      ['Bend the far knee up, then pull on that knee to roll them toward you onto their side.', 'Dobla la rodilla más lejana y jala de esa rodilla para rodarlo hacia ti, de lado.'],
+      ['Tilt the head back a little so the airway stays open. Check breathing every minute.', 'Inclina un poco la cabeza hacia atrás para que la vía respiratoria quede abierta. Revisa la respiración cada minuto.']
+    ],
+    dont: [['If they stop breathing normally, roll them onto their back and start CPR. Don\'t move someone who may have a neck or back injury unless you must.', 'Si deja de respirar normal, voltéalo boca arriba y empieza la RCP. No muevas a alguien que podría tener una lesión de cuello o espalda a menos que sea necesario.']],
+    tip: ['Practice it on a family member once; it takes a minute.', 'Practícalo una vez con alguien de la familia; toma un minuto.'],
+    src: 'American Red Cross' },
+  { id: 'splint', cat: 'aid', icon: 'bone',
+    title: ['Sprains and possible broken bones', 'Torceduras y posibles fracturas'],
+    when: ['A fall in the dark: pain, swelling, or they can\'t put weight on it.', 'Una caída a oscuras: dolor, hinchazón o no puede apoyar.'],
+    steps: [
+      ['Keep the injured part still in the position you found it. Don\'t try to straighten it.', 'Mantén quieta la parte lastimada en la posición en que la encontraste. No intentes enderezarla.'],
+      ['Splint it with something stiff (a rolled magazine, cardboard or a board) that reaches past the joints above and below. Pad it with cloth.', 'Entablíllala con algo rígido (una revista enrollada, cartón o una tabla) que pase de las articulaciones de arriba y de abajo. Acolchónala con tela.'],
+      ['Tie it on at several points, snug but not tight. Fingers or toes should stay warm and pink.', 'Amárrala en varios puntos, firme pero no apretada. Los dedos deben seguir tibios y rosados.'],
+      ['Put a cold pack wrapped in cloth on it for 20 minutes at a time, and raise it if you can.', 'Pon una compresa fría envuelta en tela 20 minutos a la vez, y levántala si puedes.'],
+      ['Get medical care. Call 911 for a bone through the skin, a head, neck or back injury, or a hip or thigh injury.', 'Busca atención médica. Llama al 911 si el hueso sale por la piel, hay lesión de cabeza, cuello o espalda, o de cadera o muslo.']
+    ],
+    dont: [['Never put ice straight on skin. Loosen the splint if fingers or toes turn pale, blue, cold or numb.', 'Nunca pongas hielo directo en la piel. Afloja la tablilla si los dedos se ponen pálidos, morados, fríos o entumidos.']],
+    tip: ['A headlamp on every adult prevents most falls in an outage.', 'Una lámpara de cabeza para cada adulto evita la mayoría de las caídas en un apagón.'],
+    src: 'American Red Cross' },
+  /* ---------------- light, warmth, water ---------------- */
+  { id: 'lantern', cat: 'home', icon: 'lamp',
+    title: ['Make a room lantern from a water jug', 'Haz una lámpara de cuarto con un garrafón'],
+    when: ['You have flashlights but need light for a whole room, without candles.', 'Tienes linternas pero necesitas luz para todo el cuarto, sin velas.'],
+    steps: [
+      ['Fill a clear or milky gallon jug with water.', 'Llena un galón transparente o blanco con agua.'],
+      ['Strap a headlamp around the jug with the light facing in, or stand a flashlight under it pointing up.', 'Amarra una lámpara de cabeza alrededor del garrafón con la luz hacia adentro, o pon una linterna debajo apuntando hacia arriba.'],
+      ['Set it on a table in the middle of the room. The water spreads the light like a lamp.', 'Ponlo en una mesa en medio del cuarto. El agua reparte la luz como una lámpara.']
+    ],
+    dont: [['Skip candles around kids. If you must use one, an adult stays in the room.', 'Evita las velas cerca de los niños. Si tienes que usar una, un adulto se queda en el cuarto.']],
+    tip: ['Use the low setting; it lasts many times longer.', 'Usa el modo bajo; dura muchas veces más.'],
+    src: 'Ready.gov' },
+  { id: 'warm', cat: 'home', icon: 'thermometer',
+    title: ['Stay warm safely with no heat', 'Mantenerse calientes sin calefacción'],
+    when: ['A winter outage, like February 2021.', 'Un apagón en invierno, como en febrero de 2021.'],
+    steps: [
+      ['Pick one small inside room. Close the other doors and roll towels against the gaps.', 'Escojan un cuarto chico interior. Cierren las demás puertas y pongan toallas enrolladas en las rendijas.'],
+      ['Hang blankets over the windows. Build a blanket fort over a table and get in together.', 'Cuelguen cobijas en las ventanas. Hagan un fuerte de cobijas sobre una mesa y métanse juntos.'],
+      ['Layers on everyone, with a hat and dry socks. Sleep on pads or cushions, not the bare floor.', 'Capas de ropa para todos, con gorro y calcetines secos. Duerman sobre colchonetas o cojines, no en el piso.'],
+      ['Hot water bottle: fill a sturdy bottle with hot (not boiling) water heated outside, close it tight, and wrap it in a sock or towel.', 'Bolsa de agua caliente: llena una botella resistente con agua caliente (no hirviendo) calentada afuera, ciérrala bien y envuélvela en un calcetín o toalla.'],
+      ['Eat and drink something warm when you can.', 'Coman y tomen algo caliente cuando puedan.']
+    ],
+    dont: [['Never heat with a gas oven, grill, camp stove or generator inside. No hot water bottles in a baby\'s sleep space.', 'Nunca calienten con el horno de gas, parrilla, estufa de campamento o generador adentro. Nada de bolsas de agua caliente donde duerme un bebé.']],
+    tip: ['Check the Stay or go screen every evening.', 'Revisen la pantalla Quedarse o irse cada noche.'],
+    src: 'CDC, Ready.gov' },
+  { id: 'cool', cat: 'home', icon: 'fan',
+    title: ['Stay cool with no A/C', 'Mantenerse frescos sin aire acondicionado'],
+    when: ['A summer outage when it\'s over 32°C (90°F) inside.', 'Un apagón en verano con más de 32°C (90°F) adentro.'],
+    steps: [
+      ['Close blinds on sunny windows by 9 am. Open windows only at night.', 'Cierren las persianas de las ventanas soleadas antes de las 9 am. Abran las ventanas solo de noche.'],
+      ['Wet a cloth and drape it on the neck; aim a battery fan at damp skin.', 'Mojen un trapo y pónganlo en el cuello; apunten un ventilador de baterías a la piel húmeda.'],
+      ['A cool, not cold, bath or a wet sheet over a doorway with the fan behind it cools the room a little.', 'Un baño fresco, no frío, o una sábana mojada en una puerta con el ventilador detrás refresca un poco el cuarto.'],
+      ['Drink water on a schedule. Kids drink every hour.', 'Tomen agua a horas fijas. Los niños toman cada hora.'],
+      ['In the hottest hours, go to a cooling center or sit in a running car with A/C, outside.', 'En las horas de más calor, vayan a un centro de frescura o siéntense en el carro prendido con aire, afuera.']
+    ],
+    dont: [['Never leave a child in a parked car. Confusion or hot dry skin means heat stroke: call 911.', 'Nunca dejen a un niño en un carro estacionado. Confusión o piel caliente y seca es golpe de calor: llamen al 911.']],
+    tip: ['Freeze water bottles before a storm; they cool the cooler and become drinking water.', 'Congelen botellas de agua antes de una tormenta; enfrían la hielera y luego sirven para tomar.'],
+    src: 'CDC' },
+  { id: 'water', cat: 'home', icon: 'droplets',
+    title: ['Make water safe to drink', 'Hacer que el agua sea segura para tomar'],
+    when: ['A boil-water notice, or you\'re not sure the water is safe.', 'Un aviso de hervir el agua, o no estás seguro de que el agua sea segura.'],
+    steps: [
+      ['Cloudy? First pour it through a clean cloth, paper towel or coffee filter and let it settle.', '¿Turbia? Primero cuélala con una tela limpia, papel o filtro de café y deja que se asiente.'],
+      ['Boil: bring it to a rolling boil for 2 minutes (outside on a stove), then let it cool.', 'Hiérvela: a borbotones por 2 minutos (afuera en una estufa) y deja que se enfríe.'],
+      ['Or bleach: unscented bleach, 8 drops of 6% (or 6 drops of 8.25%) per gallon of clear water. Stir and wait 30 minutes.', 'O con cloro: cloro sin aroma, 8 gotas al 6% (o 6 gotas al 8.25%) por galón de agua clara. Revuelve y espera 30 minutos.'],
+      ['It should smell slightly of chlorine. If not, repeat and wait 15 more minutes.', 'Debe oler un poco a cloro. Si no, repite y espera 15 minutos más.']
+    ],
+    dont: [['Filtering through cloth alone does not make water safe. Use bottled or boiled water for babies and kids\' cups.', 'Colarla con tela no la hace segura. Usa agua embotellada o hervida para los bebés y los vasos de los niños.']],
+    tip: ['Fill the bathtub at the start of any outage. Upper floors lose pressure first.', 'Llenen la tina al empezar cualquier apagón. Los pisos de arriba pierden presión primero.'],
+    src: 'CDC' },
+  /* ---------------- fire and cooking ---------------- */
+  { id: 'stove', cat: 'fire', icon: 'flame-kindling',
+    title: ['Use a camp stove or grill safely', 'Usar una estufa de campamento o parrilla con seguridad'],
+    when: ['You need to boil water or heat food with no power.', 'Necesitas hervir agua o calentar comida sin electricidad.'],
+    steps: [
+      ['Set it up outside, on flat ground, at least 10 feet from the building, windows and anything that burns.', 'Ponla afuera, en suelo plano, al menos a 10 pies del edificio, de las ventanas y de lo que se pueda quemar.'],
+      ['Connect the fuel outside and check for leaks. Light it with a long lighter, keeping your face back.', 'Conecta el gas afuera y revisa que no haya fugas. Préndela con un encendedor largo, con la cara lejos.'],
+      ['An adult stays with it the whole time. Keep kids and pets 3 feet away.', 'Un adulto se queda con ella todo el tiempo. Niños y mascotas a 3 pies de distancia.'],
+      ['Turn it off at the valve when done, let it cool, and store fuel outside.', 'Apágala en la válvula al terminar, deja que se enfríe y guarda el gas afuera.']
+    ],
+    dont: [['Never use a grill, camp stove or generator indoors, in a garage, on a covered patio or on most apartment balconies. Carbon monoxide has no smell.', 'Nunca uses parrilla, estufa de campamento o generador adentro, en el garaje, en un patio techado o en la mayoría de los balcones de apartamento. El monóxido de carbono no tiene olor.']],
+    tip: ['Boil water for a few days at once to save fuel. Keep 2 spare canisters.', 'Hierve agua para varios días de una vez para ahorrar gas. Ten 2 tanques de repuesto.'],
+    src: 'CDC, NFPA' },
+  { id: 'campfire', cat: 'fire', icon: 'tent',
+    title: ['Build a small outdoor fire (only where allowed)', 'Hacer una fogata chica afuera (solo donde se permita)'],
+    when: ['A long outage, away from buildings, where fires are legal. A camp stove is safer for most families.', 'Un apagón largo, lejos de edificios, donde las fogatas son legales. Para la mayoría de las familias, una estufa de campamento es más segura.'],
+    steps: [
+      ['Check first: many cities, including Austin, restrict open fires, and counties often have burn bans. Search "burn ban" and your county, or call 311.', 'Revisa primero: muchas ciudades, incluyendo Austin, restringen las fogatas, y los condados seguido tienen prohibiciones de quema. Busca "burn ban" y tu condado, o llama al 311.'],
+      ['Use a fire pit or ring on bare ground, far from buildings, fences and trees. Have a bucket of water and a shovel ready.', 'Usa un fogón o aro en tierra pelada, lejos de edificios, cercas y árboles. Ten listos una cubeta de agua y una pala.'],
+      ['Gather three sizes: tinder (dry grass, dryer lint, a cotton ball with petroleum jelly), kindling (pencil-thin sticks) and fuel (wrist-thick wood).', 'Junta tres tamaños: yesca (pasto seco, pelusa de secadora, algodón con vaselina), ramitas (delgadas como un lápiz) y leña (gruesa como tu muñeca).'],
+      ['Put the tinder in the middle and lean kindling around it like a teepee. Light the tinder at the bottom, out of the wind.', 'Pon la yesca en medio y recarga las ramitas alrededor como un tipi. Prende la yesca por abajo, protegida del viento.'],
+      ['Add bigger wood slowly as it catches. Keep it small.', 'Agrega leña más grande poco a poco conforme prende. Mantenla chica.'],
+      ['To put it out: drown it with water, stir the ashes, drown again, and feel with the back of your hand. It must be cold.', 'Para apagarla: échale mucha agua, revuelve las cenizas, échale más agua y toca con el dorso de la mano. Debe estar fría.']
+    ],
+    dont: [['Never use gasoline. Never bring coals or embers inside to warm a room. Never leave a fire alone.', 'Nunca uses gasolina. Nunca metas carbones o brasas para calentar un cuarto. Nunca dejes una fogata sola.']],
+    tip: ['Keep waterproof matches and a lighter in a zip bag in the go-bag.', 'Ten cerillos a prueba de agua y un encendedor en una bolsa con cierre dentro de la mochila.'],
+    src: 'Ready.gov, NFPA' },
+  { id: 'extinguisher', cat: 'fire', icon: 'fire-extinguisher',
+    title: ['Use a fire extinguisher (P.A.S.S.)', 'Usar un extintor (J.A.P.B.)'],
+    when: ['A small fire, like a pan or trash can, with a clear way out behind you.', 'Un fuego chico, como un sartén o un bote de basura, con una salida libre detrás de ti.'],
+    steps: [
+      ['Get everyone out and call 911 first, or have someone else call.', 'Saca a todos y llama al 911 primero, o que alguien más llame.'],
+      ['Pull the pin.', 'Jala el seguro.'],
+      ['Aim low, at the base of the fire.', 'Apunta abajo, a la base del fuego.'],
+      ['Squeeze the handle slowly.', 'Presiona la manija despacio.'],
+      ['Sweep side to side until it\'s out. Back away; watch that it doesn\'t restart.', 'Barre de lado a lado hasta apagarlo. Retírate y vigila que no vuelva a prender.']
+    ],
+    dont: [['If it isn\'t out within seconds, or smoke is filling the room, leave and close the door behind you. Never throw water on a grease fire; cover the pan with a lid.', 'Si no se apaga en segundos, o el humo llena el cuarto, sal y cierra la puerta. Nunca le eches agua a un fuego de aceite; tapa el sartén.']],
+    tip: ['Keep an ABC extinguisher near the kitchen exit, not over the stove.', 'Ten un extintor ABC junto a la salida de la cocina, no arriba de la estufa.'],
+    src: 'NFPA' },
+  /* ---------------- knots ---------------- */
+  { id: 'square', cat: 'knots', icon: 'link',
+    title: ['Square knot: tie two ends together', 'Nudo llano: unir dos puntas'],
+    when: ['Tying a bundle, a bandage or a tarp corner. Not for anything that holds weight or a person.', 'Amarrar un bulto, un vendaje o la esquina de una lona. No para algo que cargue peso ni para personas.'],
+    steps: [
+      ['Hold one end in each hand.', 'Toma una punta en cada mano.'],
+      ['Right over left, and tuck it under (like the first step of tying shoes).', 'La derecha sobre la izquierda y métela por debajo (como el primer paso para amarrar zapatos).'],
+      ['Then left over right, and tuck it under.', 'Luego la izquierda sobre la derecha y métela por debajo.'],
+      ['Pull both ends. It should lie flat, like two loops hugging each other.', 'Jala las dos puntas. Debe quedar plano, como dos lazos abrazados.']
+    ],
+    dont: [['If it twists and slips, you tied a "granny knot". Untie it and make sure the second cross goes the opposite way.', 'Si se tuerce y resbala, hiciste un nudo mal hecho. Desátalo y fíjate que el segundo cruce vaya al revés.']],
+    tip: ['Say it out loud: "right over left, left over right."', 'Dilo en voz alta: "derecha sobre izquierda, izquierda sobre derecha".'],
+    src: 'Boy Scouts of America handbook' },
+  { id: 'bowline', cat: 'knots', icon: 'circle-dot',
+    title: ['Bowline: a loop that won\'t slip', 'As de guía: un lazo que no se corre'],
+    when: ['A fixed loop to hang a bag or lantern, or tie a line around a post, that unties easily later.', 'Un lazo fijo para colgar una bolsa o lámpara, o amarrar una cuerda a un poste, que luego se desata fácil.'],
+    steps: [
+      ['Make a small loop (the "hole") in the rope, with the loose end lying on top.', 'Haz un lazo chico (el "hoyo") en la cuerda, con la punta suelta por encima.'],
+      ['Bring the loose end up through the hole from underneath: "the rabbit comes out of the hole".', 'Pasa la punta suelta hacia arriba por el hoyo, desde abajo: "el conejo sale del hoyo".'],
+      ['Take it around behind the long part of the rope: "around the tree".', 'Pásala por detrás de la parte larga de la cuerda: "le da la vuelta al árbol".'],
+      ['Send it back down through the small loop: "back into the hole".', 'Regrésala hacia abajo por el lazo chico: "y vuelve a entrar al hoyo".'],
+      ['Hold the end and the big loop together, and pull the long part to tighten.', 'Sostén la punta y el lazo grande juntos, y jala la parte larga para apretar.']
+    ],
+    dont: [['Leave a tail at least a few inches long. Practice it before you need it.', 'Deja una punta de al menos unas pulgadas. Practícalo antes de necesitarlo.']],
+    tip: ['With internet, AnimatedKnots.com shows each knot moving step by step.', 'Con internet, AnimatedKnots.com muestra cada nudo paso a paso en movimiento.'],
+    src: 'Boy Scouts of America handbook' },
+  { id: 'clove', cat: 'knots', icon: 'git-commit-horizontal',
+    title: ['Clove hitch: tie a rope to a pole', 'Ballestrinque: amarrar una cuerda a un poste'],
+    when: ['Starting a clothesline or tarp line on a post, railing or tree.', 'Empezar un tendedero o una cuerda para lona en un poste, barandal o árbol.'],
+    steps: [
+      ['Wrap the rope once around the pole.', 'Da una vuelta con la cuerda alrededor del poste.'],
+      ['Cross the end over the first wrap, making an X.', 'Cruza la punta sobre la primera vuelta, formando una X.'],
+      ['Wrap around the pole a second time.', 'Da una segunda vuelta al poste.'],
+      ['Tuck the end under that second wrap, so it comes out under the X. Pull both ends tight.', 'Mete la punta por debajo de esa segunda vuelta, para que salga bajo la X. Jala las dos puntas.']
+    ],
+    dont: [['It can loosen if the pole turns. Add a half hitch (one more loop around the line) for extra hold.', 'Se puede aflojar si el poste gira. Agrega un medio nudo (una vuelta más alrededor de la cuerda) para que agarre mejor.']],
+    tip: ['Both ends should leave the knot in opposite directions.', 'Las dos puntas deben salir del nudo en direcciones opuestas.'],
+    src: 'Boy Scouts of America handbook' },
+  { id: 'tautline', cat: 'knots', icon: 'tent-tree',
+    title: ['Taut-line hitch: a line you can tighten', 'Nudo de tensión: una cuerda que puedes tensar'],
+    when: ['A clothesline or tarp line you want to tighten or loosen without retying.', 'Un tendedero o cuerda de lona que quieres tensar o aflojar sin volver a amarrar.'],
+    steps: [
+      ['Pass the rope around a stake, post or tree, so you have the loose end next to the long part.', 'Pasa la cuerda alrededor de una estaca, poste o árbol, para que la punta suelta quede junto a la parte larga.'],
+      ['With the loose end, wrap twice around the long part, working back toward the stake, inside the loop.', 'Con la punta suelta, da dos vueltas alrededor de la parte larga, avanzando hacia la estaca, dentro del lazo.'],
+      ['Then make one more wrap around the long part, outside the loop (on the far side of the first two).', 'Luego da una vuelta más alrededor de la parte larga, fuera del lazo (del otro lado de las primeras dos).'],
+      ['Tuck the end through that last wrap and pull snug.', 'Mete la punta por esa última vuelta y aprieta.'],
+      ['Slide the knot along the line to tighten or loosen it. It holds when the line pulls.', 'Desliza el nudo por la cuerda para tensar o aflojar. Aguanta cuando la cuerda jala.']
+    ],
+    dont: [['Not for climbing or holding a person.', 'No sirve para escalar ni para sostener a una persona.']],
+    tip: ['Great for hanging a tarp over a car or patio for shade.', 'Muy útil para colgar una lona sobre el carro o el patio para dar sombra.'],
+    src: 'Boy Scouts of America handbook' },
+  /* ---------------- signals and home safety ---------------- */
+  { id: 'signal', cat: 'safety', icon: 'megaphone',
+    title: ['Signal for help', 'Pedir ayuda con señales'],
+    when: ['Phones aren\'t working and you need neighbors or rescuers to find you.', 'Los teléfonos no funcionan y necesitas que los vecinos o rescatistas te encuentren.'],
+    steps: [
+      ['Try texting 911 first. Texts often get through when calls don\'t.', 'Primero intenta enviar un texto al 911. Los textos muchas veces pasan cuando las llamadas no.'],
+      ['Whistle: 3 long blasts, then wait and repeat. Three of anything means "help".', 'Silbato: 3 silbidos largos, espera y repite. Tres de cualquier cosa significa "ayuda".'],
+      ['Flashlight at night: SOS is 3 short, 3 long, 3 short flashes.', 'Linterna de noche: SOS es 3 destellos cortos, 3 largos y 3 cortos.'],
+      ['Hang something bright from a window or door where it can be seen from the street.', 'Cuelga algo de color brillante en una ventana o puerta donde se vea desde la calle.']
+    ],
+    dont: [['Save your voice: shouting tires you fast. A whistle carries much farther.', 'Cuida tu voz: gritar cansa rápido. Un silbato se oye mucho más lejos.']],
+    tip: ['Clip a whistle to every go-bag and kid\'s backpack.', 'Pon un silbato en cada mochila de emergencia y en la mochila de cada niño.'],
+    src: 'Ready.gov' },
+  { id: 'shutoff', cat: 'safety', icon: 'wrench',
+    title: ['Shut off water and power', 'Cerrar el agua y la electricidad'],
+    when: ['A burst pipe, flooding, or before you leave in a freeze.', 'Un tubo reventado, una inundación o antes de irte en una helada.'],
+    steps: [
+      ['Water: find the main valve now. It\'s usually where the pipe enters the house, near the water heater, or in an apartment utility closet. Turn it clockwise to close.', 'Agua: busca la llave principal desde ahora. Normalmente está donde entra el tubo a la casa, cerca del calentador o en el clóset de servicios del apartamento. Gírala a la derecha para cerrar.'],
+      ['Leaving in a freeze? Close the main, then open the faucets to drain the pipes.', '¿Se van en una helada? Cierra la principal y abre las llaves para vaciar la tubería.'],
+      ['Power: at the breaker panel, flip the main breaker off if water is near outlets or you smell burning.', 'Electricidad: en el panel de breakers, baja el breaker principal si hay agua cerca de los enchufes o huele a quemado.'],
+      ['When power returns, unplug big appliances first, then turn things back on one at a time.', 'Cuando vuelva la luz, desconecta primero los aparatos grandes y luego préndelos uno por uno.']
+    ],
+    dont: [['Never touch the panel while standing in water. Stay 35 feet from a downed power line and call 911.', 'Nunca toques el panel parado en agua. Aléjate 35 pies de un cable caído y llama al 911.']],
+    tip: ['Put a label or bright tape on the main water valve and breaker so anyone can find them in the dark.', 'Pon una etiqueta o cinta brillante en la llave principal y el breaker para que cualquiera los encuentre a oscuras.'],
+    src: 'Ready.gov' },
+  { id: 'gas', cat: 'safety', icon: 'triangle-alert',
+    title: ['Smell gas or a CO alarm goes off', 'Huele a gas o suena la alarma de monóxido'],
+    when: ['A rotten-egg smell, a hissing sound, or the carbon monoxide alarm beeps.', 'Huele a huevo podrido, se oye un siseo o suena la alarma de monóxido de carbono.'],
+    steps: [
+      ['Get everyone, including pets, outside right away. Leave the door open behind you.', 'Saca a todos, incluyendo mascotas, afuera de inmediato. Deja la puerta abierta.'],
+      ['Don\'t flip switches, light anything, or use a phone inside.', 'No prendas ni apagues interruptores, no prendas nada y no uses el teléfono adentro.'],
+      ['From outside, call 911 and your gas company.', 'Desde afuera, llama al 911 y a tu compañía de gas.'],
+      ['Headache, dizziness or sleepiness in several people means possible CO poisoning. Get fresh air and tell 911.', 'Dolor de cabeza, mareo o sueño en varias personas puede ser intoxicación por monóxido. Salgan al aire libre y díganle al 911.']
+    ],
+    dont: [['Don\'t go back in until firefighters say it\'s safe. If you turn off the gas, only the gas company should turn it back on.', 'No vuelvan a entrar hasta que los bomberos digan que es seguro. Si cierras el gas, solo la compañía de gas debe volver a abrirlo.']],
+    tip: ['Test CO and smoke alarms when the clocks change.', 'Prueben las alarmas de monóxido y de humo cuando cambia la hora.'],
+    src: 'CDC, Ready.gov' }
+];

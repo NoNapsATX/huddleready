@@ -3,14 +3,14 @@
    CDC, NFPA, Ready.gov. These are reminders, not training: take a CPR and first-aid class. */
 window.SKILL_CATS = [
   ['aid', 'heart-pulse', ['First aid', 'Primeros auxilios'], 'red'],
-  ['home', 'house', ['Light, warmth and water', 'Luz, calor y agua'], 'amber'],
   ['fire', 'flame', ['Fire and cooking', 'Fuego y cocina'], 'amber'],
   ['knots', 'link', ['Knots', 'Nudos'], 'blue'],
-  ['safety', 'shield', ['Signals and home safety', 'Señales y seguridad en casa'], 'green']
+  ['home', 'lamp', ['Light, warmth and water', 'Luz, calor y agua'], 'amber'],
+  ['living', 'sofa', ['Living at home for days', 'Vivir en casa por días'], 'green']
 ];
 window.SKILLS = [
   /* ---------------- first aid ---------------- */
-  { id: 'cpr', cat: 'aid', icon: 'heart-pulse',
+  { id: 'cpr', figs: {2: 'cpr'}, cat: 'aid', icon: 'heart-pulse',
     title: ['Hands-only CPR (adults and teens)', 'RCP solo con las manos (adultos y adolescentes)'],
     when: ['Someone collapses, won\'t wake up, and isn\'t breathing normally (or only gasping).', 'Alguien se desmaya, no despierta y no respira normal (o solo jadea).'],
     steps: [
@@ -23,7 +23,7 @@ window.SKILLS = [
     dont: [['For a child or baby, stay on the line: the 911 dispatcher will coach you. Babies get 2 fingers, not hands.', 'Para un niño o bebé, sigue en la línea: el operador del 911 te guía. A los bebés se les usan 2 dedos, no las manos.']],
     tip: ['A 3-hour CPR class teaches this for kids and babies too. It\'s the best prep step there is.', 'Una clase de RCP de 3 horas enseña esto también para niños y bebés. Es la mejor preparación que hay.'],
     src: 'American Heart Association' },
-  { id: 'choking', cat: 'aid', icon: 'wind',
+  { id: 'choking', figs: {3: 'choking'}, cat: 'aid', icon: 'wind',
     title: ['Choking: adults and kids over 1', 'Atragantamiento: adultos y niños mayores de 1 año'],
     when: ['They can\'t cough, talk, cry or breathe, or hold their throat. If they can cough, let them keep coughing and stay with them.', 'No puede toser, hablar, llorar ni respirar, o se agarra el cuello. Si puede toser, déjalo toser y quédate con él.'],
     steps: [
@@ -37,7 +37,7 @@ window.SKILLS = [
     dont: [['Don\'t sweep inside the mouth unless you can see the object. Never hold a child upside down.', 'No metas el dedo en la boca a menos que veas el objeto. Nunca cuelgues a un niño de cabeza.'], ['Pregnant or too large to reach around: push on the center of the chest instead of the belly.', 'Embarazada o muy grande para abrazar: empuja en el centro del pecho en lugar del abdomen.']],
     tip: ['Alone and choking? Call 911 and leave the line open, then press your belly hard against the back of a chair.', '¿Te atragantas y estás solo? Llama al 911, deja la línea abierta y presiona tu abdomen con fuerza contra el respaldo de una silla.'],
     src: 'American Red Cross' },
-  { id: 'choking-baby', cat: 'aid', icon: 'baby',
+  { id: 'choking-baby', figs: {3: 'choking-baby'}, cat: 'aid', icon: 'baby',
     title: ['Choking: babies under 1', 'Atragantamiento: bebés menores de 1 año'],
     when: ['The baby can\'t cough, cry or breathe, or is turning blue.', 'El bebé no puede toser, llorar ni respirar, o se está poniendo morado.'],
     steps: [
@@ -51,7 +51,7 @@ window.SKILLS = [
     dont: [['Never do abdominal thrusts on a baby. Don\'t put your finger in the mouth unless you see the object.', 'Nunca hagas compresiones abdominales a un bebé. No metas el dedo en la boca a menos que veas el objeto.']],
     tip: ['Cut grapes, hot dogs and similar foods lengthwise for kids under 4.', 'Corta a lo largo las uvas, salchichas y comida parecida para niños menores de 4 años.'],
     src: 'American Red Cross' },
-  { id: 'bleeding', cat: 'aid', icon: 'droplet',
+  { id: 'bleeding', figs: {3: 'bleeding'}, cat: 'aid', icon: 'droplet',
     title: ['Stop serious bleeding', 'Detener un sangrado grave'],
     when: ['Blood is spurting, pooling, or soaking through cloth.', 'La sangre sale a chorros, se junta o traspasa la tela.'],
     steps: [
@@ -64,7 +64,7 @@ window.SKILLS = [
     dont: [['Don\'t remove soaked cloth; add more on top. A belt makes a poor tourniquet; keep a real one (CAT or SOF-T) in your kit.', 'No quites la tela empapada; agrega más encima. Un cinturón no sirve bien como torniquete; ten uno de verdad (CAT o SOF-T) en el botiquín.']],
     tip: ['Free 1-hour Stop the Bleed classes are offered around Austin. Search "Stop the Bleed class Austin".', 'En Austin hay clases gratis de 1 hora de Stop the Bleed. Busca "Stop the Bleed class Austin".'],
     src: 'Stop the Bleed' },
-  { id: 'burns', cat: 'aid', icon: 'flame',
+  { id: 'burns', figs: {0: 'burns'}, cat: 'aid', icon: 'flame',
     title: ['Burns', 'Quemaduras'],
     when: ['Skin touched something hot: a stove, candle, hot water or a camp stove.', 'La piel tocó algo caliente: estufa, vela, agua caliente o estufa de campamento.'],
     steps: [
@@ -76,7 +76,7 @@ window.SKILLS = [
     dont: [['No ice, butter, toothpaste or ointment. Don\'t pop blisters.', 'Nada de hielo, mantequilla, pasta de dientes ni pomada. No revientes las ampollas.']],
     tip: ['Keep kids out of the kitchen and away from any camp stove; a toddler gate helps.', 'Mantén a los niños fuera de la cocina y lejos de cualquier estufa de campamento; una reja para niños ayuda.'],
     src: 'American Red Cross' },
-  { id: 'recovery', cat: 'aid', icon: 'bed',
+  { id: 'recovery', figs: {4: 'recovery'}, cat: 'aid', icon: 'bed',
     title: ['Recovery position', 'Posición de recuperación'],
     when: ['Someone is breathing but won\'t wake up, and you have to wait for help or step away.', 'Alguien respira pero no despierta, y tienes que esperar ayuda o alejarte un momento.'],
     steps: [
@@ -89,7 +89,7 @@ window.SKILLS = [
     dont: [['If they stop breathing normally, roll them onto their back and start CPR. Don\'t move someone who may have a neck or back injury unless you must.', 'Si deja de respirar normal, voltéalo boca arriba y empieza la RCP. No muevas a alguien que podría tener una lesión de cuello o espalda a menos que sea necesario.']],
     tip: ['Practice it on a family member once; it takes a minute.', 'Practícalo una vez con alguien de la familia; toma un minuto.'],
     src: 'American Red Cross' },
-  { id: 'splint', cat: 'aid', icon: 'bone',
+  { id: 'splint', figs: {2: 'splint'}, cat: 'aid', icon: 'bone',
     title: ['Sprains and possible broken bones', 'Torceduras y posibles fracturas'],
     when: ['A fall in the dark: pain, swelling, or they can\'t put weight on it.', 'Una caída a oscuras: dolor, hinchazón o no puede apoyar.'],
     steps: [
@@ -103,7 +103,7 @@ window.SKILLS = [
     tip: ['A headlamp on every adult prevents most falls in an outage.', 'Una lámpara de cabeza para cada adulto evita la mayoría de las caídas en un apagón.'],
     src: 'American Red Cross' },
   /* ---------------- light, warmth, water ---------------- */
-  { id: 'lantern', cat: 'home', icon: 'lamp',
+  { id: 'lantern', figs: {1: 'lantern'}, cat: 'home', icon: 'lamp',
     title: ['Make a room lantern from a water jug', 'Haz una lámpara de cuarto con un garrafón'],
     when: ['You have flashlights but need light for a whole room, without candles.', 'Tienes linternas pero necesitas luz para todo el cuarto, sin velas.'],
     steps: [
@@ -114,7 +114,7 @@ window.SKILLS = [
     dont: [['Skip candles around kids. If you must use one, an adult stays in the room.', 'Evita las velas cerca de los niños. Si tienes que usar una, un adulto se queda en el cuarto.']],
     tip: ['Use the low setting; it lasts many times longer.', 'Usa el modo bajo; dura muchas veces más.'],
     src: 'Ready.gov' },
-  { id: 'warm', cat: 'home', icon: 'thermometer',
+  { id: 'warm', figs: {1: 'warmroom'}, cat: 'home', icon: 'thermometer',
     title: ['Stay warm safely with no heat', 'Mantenerse calientes sin calefacción'],
     when: ['A winter outage, like February 2021.', 'Un apagón en invierno, como en febrero de 2021.'],
     steps: [
@@ -140,7 +140,7 @@ window.SKILLS = [
     dont: [['Never leave a child in a parked car. Confusion or hot dry skin means heat stroke: call 911.', 'Nunca dejen a un niño en un carro estacionado. Confusión o piel caliente y seca es golpe de calor: llamen al 911.']],
     tip: ['Freeze water bottles before a storm; they cool the cooler and become drinking water.', 'Congelen botellas de agua antes de una tormenta; enfrían la hielera y luego sirven para tomar.'],
     src: 'CDC' },
-  { id: 'water', cat: 'home', icon: 'droplets',
+  { id: 'water', figs: {2: 'water'}, cat: 'home', icon: 'droplets',
     title: ['Make water safe to drink', 'Hacer que el agua sea segura para tomar'],
     when: ['A boil-water notice, or you\'re not sure the water is safe.', 'Un aviso de hervir el agua, o no estás seguro de que el agua sea segura.'],
     steps: [
@@ -153,7 +153,7 @@ window.SKILLS = [
     tip: ['Fill the bathtub at the start of any outage. Upper floors lose pressure first.', 'Llenen la tina al empezar cualquier apagón. Los pisos de arriba pierden presión primero.'],
     src: 'CDC' },
   /* ---------------- fire and cooking ---------------- */
-  { id: 'stove', cat: 'fire', icon: 'flame-kindling',
+  { id: 'stove', figs: {0: 'stove'}, cat: 'fire', icon: 'flame-kindling',
     title: ['Use a camp stove or grill safely', 'Usar una estufa de campamento o parrilla con seguridad'],
     when: ['You need to boil water or heat food with no power.', 'Necesitas hervir agua o calentar comida sin electricidad.'],
     steps: [
@@ -165,7 +165,7 @@ window.SKILLS = [
     dont: [['Never use a grill, camp stove or generator indoors, in a garage, on a covered patio or on most apartment balconies. Carbon monoxide has no smell.', 'Nunca uses parrilla, estufa de campamento o generador adentro, en el garaje, en un patio techado o en la mayoría de los balcones de apartamento. El monóxido de carbono no tiene olor.']],
     tip: ['Boil water for a few days at once to save fuel. Keep 2 spare canisters.', 'Hierve agua para varios días de una vez para ahorrar gas. Ten 2 tanques de repuesto.'],
     src: 'CDC, NFPA' },
-  { id: 'campfire', cat: 'fire', icon: 'tent',
+  { id: 'campfire', figs: {3: 'firelay'}, cat: 'fire', icon: 'tent',
     title: ['Build a small outdoor fire (only where allowed)', 'Hacer una fogata chica afuera (solo donde se permita)'],
     when: ['A long outage, away from buildings, where fires are legal. A camp stove is safer for most families.', 'Un apagón largo, lejos de edificios, donde las fogatas son legales. Para la mayoría de las familias, una estufa de campamento es más segura.'],
     steps: [
@@ -179,7 +179,7 @@ window.SKILLS = [
     dont: [['Never use gasoline. Never bring coals or embers inside to warm a room. Never leave a fire alone.', 'Nunca uses gasolina. Nunca metas carbones o brasas para calentar un cuarto. Nunca dejes una fogata sola.']],
     tip: ['Keep waterproof matches and a lighter in a zip bag in the go-bag.', 'Ten cerillos a prueba de agua y un encendedor en una bolsa con cierre dentro de la mochila.'],
     src: 'Ready.gov, NFPA' },
-  { id: 'extinguisher', cat: 'fire', icon: 'fire-extinguisher',
+  { id: 'extinguisher', figs: {4: 'pass'}, cat: 'fire', icon: 'fire-extinguisher',
     title: ['Use a fire extinguisher (P.A.S.S.)', 'Usar un extintor (J.A.P.B.)'],
     when: ['A small fire, like a pan or trash can, with a clear way out behind you.', 'Un fuego chico, como un sartén o un bote de basura, con una salida libre detrás de ti.'],
     steps: [
@@ -193,7 +193,7 @@ window.SKILLS = [
     tip: ['Keep an ABC extinguisher near the kitchen exit, not over the stove.', 'Ten un extintor ABC junto a la salida de la cocina, no arriba de la estufa.'],
     src: 'NFPA' },
   /* ---------------- knots ---------------- */
-  { id: 'square', cat: 'knots', icon: 'link',
+  { id: 'square', figs: {1: 'square-1', 2: 'square-2', 3: 'square-3'}, cat: 'knots', icon: 'link',
     title: ['Square knot: tie two ends together', 'Nudo llano: unir dos puntas'],
     when: ['Tying a bundle, a bandage or a tarp corner. Not for anything that holds weight or a person.', 'Amarrar un bulto, un vendaje o la esquina de una lona. No para algo que cargue peso ni para personas.'],
     steps: [
@@ -205,7 +205,7 @@ window.SKILLS = [
     dont: [['If it twists and slips, you tied a "granny knot". Untie it and make sure the second cross goes the opposite way.', 'Si se tuerce y resbala, hiciste un nudo mal hecho. Desátalo y fíjate que el segundo cruce vaya al revés.']],
     tip: ['Say it out loud: "right over left, left over right."', 'Dilo en voz alta: "derecha sobre izquierda, izquierda sobre derecha".'],
     src: 'Boy Scouts of America handbook' },
-  { id: 'bowline', cat: 'knots', icon: 'circle-dot',
+  { id: 'bowline', figs: {0: 'bowline-1', 1: 'bowline-2', 2: 'bowline-3', 3: 'bowline-4'}, cat: 'knots', icon: 'circle-dot',
     title: ['Bowline: a loop that won\'t slip', 'As de guía: un lazo que no se corre'],
     when: ['A fixed loop to hang a bag or lantern, or tie a line around a post, that unties easily later.', 'Un lazo fijo para colgar una bolsa o lámpara, o amarrar una cuerda a un poste, que luego se desata fácil.'],
     steps: [
@@ -218,7 +218,7 @@ window.SKILLS = [
     dont: [['Leave a tail at least a few inches long. Practice it before you need it.', 'Deja una punta de al menos unas pulgadas. Practícalo antes de necesitarlo.']],
     tip: ['With internet, AnimatedKnots.com shows each knot moving step by step.', 'Con internet, AnimatedKnots.com muestra cada nudo paso a paso en movimiento.'],
     src: 'Boy Scouts of America handbook' },
-  { id: 'clove', cat: 'knots', icon: 'git-commit-horizontal',
+  { id: 'clove', figs: {0: 'clove-1', 2: 'clove-2', 3: 'clove-3'}, cat: 'knots', icon: 'git-commit-horizontal',
     title: ['Clove hitch: tie a rope to a pole', 'Ballestrinque: amarrar una cuerda a un poste'],
     when: ['Starting a clothesline or tarp line on a post, railing or tree.', 'Empezar un tendedero o una cuerda para lona en un poste, barandal o árbol.'],
     steps: [
@@ -230,7 +230,7 @@ window.SKILLS = [
     dont: [['It can loosen if the pole turns. Add a half hitch (one more loop around the line) for extra hold.', 'Se puede aflojar si el poste gira. Agrega un medio nudo (una vuelta más alrededor de la cuerda) para que agarre mejor.']],
     tip: ['Both ends should leave the knot in opposite directions.', 'Las dos puntas deben salir del nudo en direcciones opuestas.'],
     src: 'Boy Scouts of America handbook' },
-  { id: 'tautline', cat: 'knots', icon: 'tent-tree',
+  { id: 'tautline', figs: {1: 'taut-1', 2: 'taut-2', 4: 'taut-3'}, cat: 'knots', icon: 'tent-tree',
     title: ['Taut-line hitch: a line you can tighten', 'Nudo de tensión: una cuerda que puedes tensar'],
     when: ['A clothesline or tarp line you want to tighten or loosen without retying.', 'Un tendedero o cuerda de lona que quieres tensar o aflojar sin volver a amarrar.'],
     steps: [
@@ -243,8 +243,8 @@ window.SKILLS = [
     dont: [['Not for climbing or holding a person.', 'No sirve para escalar ni para sostener a una persona.']],
     tip: ['Great for hanging a tarp over a car or patio for shade.', 'Muy útil para colgar una lona sobre el carro o el patio para dar sombra.'],
     src: 'Boy Scouts of America handbook' },
-  /* ---------------- signals and home safety ---------------- */
-  { id: 'signal', cat: 'safety', icon: 'megaphone',
+  /* ---------------- moved here: signal (first aid), shut-offs (home), gas and CO (fire) ---------------- */
+  { id: 'signal', cat: 'aid', icon: 'megaphone',
     title: ['Signal for help', 'Pedir ayuda con señales'],
     when: ['Phones aren\'t working and you need neighbors or rescuers to find you.', 'Los teléfonos no funcionan y necesitas que los vecinos o rescatistas te encuentren.'],
     steps: [
@@ -256,7 +256,7 @@ window.SKILLS = [
     dont: [['Save your voice: shouting tires you fast. A whistle carries much farther.', 'Cuida tu voz: gritar cansa rápido. Un silbato se oye mucho más lejos.']],
     tip: ['Clip a whistle to every go-bag and kid\'s backpack.', 'Pon un silbato en cada mochila de emergencia y en la mochila de cada niño.'],
     src: 'Ready.gov' },
-  { id: 'shutoff', cat: 'safety', icon: 'wrench',
+  { id: 'shutoff', cat: 'home', icon: 'wrench',
     title: ['Shut off water and power', 'Cerrar el agua y la electricidad'],
     when: ['A burst pipe, flooding, or before you leave in a freeze.', 'Un tubo reventado, una inundación o antes de irte en una helada.'],
     steps: [
@@ -268,7 +268,7 @@ window.SKILLS = [
     dont: [['Never touch the panel while standing in water. Stay 35 feet from a downed power line and call 911.', 'Nunca toques el panel parado en agua. Aléjate 35 pies de un cable caído y llama al 911.']],
     tip: ['Put a label or bright tape on the main water valve and breaker so anyone can find them in the dark.', 'Pon una etiqueta o cinta brillante en la llave principal y el breaker para que cualquiera los encuentre a oscuras.'],
     src: 'Ready.gov' },
-  { id: 'gas', cat: 'safety', icon: 'triangle-alert',
+  { id: 'gas', cat: 'fire', icon: 'triangle-alert',
     title: ['Smell gas or a CO alarm goes off', 'Huele a gas o suena la alarma de monóxido'],
     when: ['A rotten-egg smell, a hissing sound, or the carbon monoxide alarm beeps.', 'Huele a huevo podrido, se oye un siseo o suena la alarma de monóxido de carbono.'],
     steps: [
@@ -279,5 +279,122 @@ window.SKILLS = [
     ],
     dont: [['Don\'t go back in until firefighters say it\'s safe. If you turn off the gas, only the gas company should turn it back on.', 'No vuelvan a entrar hasta que los bomberos digan que es seguro. Si cierras el gas, solo la compañía de gas debe volver a abrirlo.']],
     tip: ['Test CO and smoke alarms when the clocks change.', 'Prueben las alarmas de monóxido y de humo cuando cambia la hora.'],
-    src: 'CDC, Ready.gov' }
+    src: 'CDC, Ready.gov' }  ,
+  /* ---------------- living at home for days ---------------- */
+  { id: 'toilet', figs: {1: 'toilet'}, cat: 'living', icon: 'toilet',
+    title: ['Toilet with no running water', 'El baño sin agua corriente'],
+    when: ['The water is off or you\'ve been told not to flush.', 'No hay agua o les dijeron que no jalen la palanca.'],
+    steps: [
+      ['Water off, but the sewer works? Flush by pouring a bucket of water (bath or rinse water is fine) quickly into the bowl.', '¿No hay agua pero el drenaje funciona? Jala echando rápido una cubeta de agua (sirve la de la tina o de enjuague) en la taza.'],
+      ['Told not to flush, or it backs up? Line the toilet bowl or a 5-gallon bucket with two heavy trash bags.', '¿Les dijeron que no jalen, o se regresa? Pon dos bolsas de basura gruesas dentro de la taza o de una cubeta de 5 galones.'],
+      ['After each use, add a scoop of clumping cat litter, sawdust or shredded paper. It soaks up liquid and cuts the smell. Keep the lid down.', 'Después de cada uso, echa una palada de arena para gato, aserrín o papel picado. Absorbe el líquido y quita el olor. Mantén la tapa cerrada.'],
+      ['Pee in a separate bucket or bottle if you can. The waste bag fills slower and smells less.', 'Si pueden, orinen en otra cubeta o botella. La bolsa se llena más despacio y huele menos.'],
+      ['When the bag is half full, tie it closed, tie the second bag over it, and put it in a lidded trash can outside, away from kids and pets.', 'Cuando la bolsa esté a la mitad, amárrala, amarra la segunda bolsa encima y ponla en un bote con tapa afuera, lejos de niños y mascotas.'],
+      ['Wash hands or use hand sanitizer every time.', 'Lávense las manos o usen gel antibacterial cada vez.']
+    ],
+    dont: [['Don\'t bury waste in the yard or put it in a compost pile or storm drain. Wear gloves when changing bags.', 'No entierren los desechos en el patio ni los echen a la composta o al drenaje de la calle. Usen guantes para cambiar las bolsas.']],
+    tip: ['A $10 bag of clay cat litter and a box of heavy trash bags are the most-forgotten outage supplies. Keep them with the kit.', 'Una bolsa de arena para gato de $10 y una caja de bolsas gruesas son lo que más se olvida. Guárdenlas con el kit.'],
+    src: 'Ready.gov, CDC' },
+  { id: 'wash', figs: {0: 'basin'}, cat: 'living', icon: 'bath',
+    title: ['Stay clean with little water', 'Mantenerse limpios con poca agua'],
+    when: ['No shower for days, or you\'re saving water for drinking.', 'Días sin regadera, o están guardando el agua para tomar.'],
+    steps: [
+      ['Basin wash: a bowl of warm water, soap and a washcloth. Go from cleanest to dirtiest: face and hands, underarms, feet, private areas last.', 'Baño con palangana: un recipiente con agua tibia, jabón y un trapo. De lo más limpio a lo más sucio: cara y manos, axilas, pies y las partes íntimas al final.'],
+      ['Make a hand-washing station: a jug with a spout (or a cooler with a tap), soap, and a bucket underneath to catch the water.', 'Hagan una estación para lavarse las manos: un garrafón con llave (o una hielera con llave), jabón y una cubeta abajo para el agua.'],
+      ['Wash hands before food and after the toilet. Hand sanitizer with at least 60% alcohol works when hands aren\'t visibly dirty.', 'Lávense las manos antes de comer y después del baño. El gel con al menos 60% de alcohol sirve cuando las manos no se ven sucias.'],
+      ['Brush teeth with bottled or treated water.', 'Lávense los dientes con agua embotellada o tratada.'],
+      ['Reuse the gray water from washing to flush the toilet.', 'Usen el agua jabonosa que sobra para jalarle al baño.']
+    ],
+    dont: [['Don\'t wash with flood water. Keep cuts clean and covered; see a doctor if one gets red, hot or swollen.', 'No se laven con agua de inundación. Mantengan las cortadas limpias y tapadas; vean al médico si se ponen rojas, calientes o hinchadas.']],
+    tip: ['Baby wipes and dry shampoo make day three feel a lot better.', 'Las toallitas húmedas y el champú en seco hacen que el tercer día se sienta mucho mejor.'],
+    src: 'CDC' },
+  { id: 'foodorder', cat: 'living', icon: 'refrigerator',
+    title: ['Keep food safe and eat it in the right order', 'Mantener la comida segura y comerla en orden'],
+    when: ['The power has been out for more than a couple of hours.', 'La luz lleva más de un par de horas apagada.'],
+    steps: [
+      ['Keep the fridge and freezer closed. A closed fridge stays cold about 4 hours. A full freezer keeps about 48 hours, a half-full one about 24.', 'Mantengan cerrados el refri y el congelador. Un refri cerrado aguanta frío unas 4 horas. Un congelador lleno, unas 48 horas; a la mitad, unas 24.'],
+      ['Eat in this order: fridge food first, then freezer food, then pantry food.', 'Coman en este orden: primero lo del refri, luego lo del congelador y al final la despensa.'],
+      ['Before 4 hours, move milk, meat, leftovers and medicine that needs cold into a cooler with ice.', 'Antes de las 4 horas, pasen la leche, carne, sobras y medicinas que necesitan frío a una hielera con hielo.'],
+      ['Tape a list of what\'s in the freezer to the door, so you open it once and grab fast.', 'Peguen en la puerta una lista de lo que hay en el congelador, para abrirlo una vez y sacar rápido.'],
+      ['Throw out meat, dairy, eggs and leftovers that sat above 40°F (4°C) for 2 hours or more.', 'Tiren la carne, lácteos, huevos y sobras que estuvieron arriba de 40°F (4°C) por 2 horas o más.']
+    ],
+    dont: [['Never taste food to check it. When in doubt, throw it out.', 'Nunca prueben la comida para ver si está buena. Si tienen duda, tírenla.']],
+    tip: ['The Food clock screen in this app counts the hours for you.', 'La pantalla Reloj de comida de esta app les cuenta las horas.'],
+    src: 'USDA' },
+  { id: 'dishes', cat: 'living', icon: 'utensils',
+    title: ['Meals and dishes with little water', 'Comidas y trastes con poca agua'],
+    when: ['Several days with no stove or no running water.', 'Varios días sin estufa o sin agua corriente.'],
+    steps: [
+      ['Use paper plates, cups and plastic forks, and give each person one marked cup for the day.', 'Usen platos, vasos y tenedores desechables, y denle a cada quien un vaso con su nombre para el día.'],
+      ['Pick no-cook or one-pot meals: canned beans or tuna, peanut butter, tortillas, cereal with shelf-stable milk.', 'Escojan comidas sin cocinar o de una sola olla: frijoles o atún de lata, crema de cacahuate, tortillas, cereal con leche de caja.'],
+      ['Wipe pans and pots with a paper towel before washing. It saves most of the water.', 'Limpien sartenes y ollas con papel antes de lavarlas. Así se ahorra casi toda el agua.'],
+      ['Wash in one tub of soapy water, rinse in a second tub of clean water, and let everything air dry.', 'Laven en una tina con agua y jabón, enjuaguen en otra con agua limpia y dejen secar al aire.']
+    ],
+    dont: [['Don\'t cook indoors on a grill or camp stove. Throw out canned food with bulging, leaking or dented seams.', 'No cocinen adentro con parrilla o estufa de campamento. Tiren las latas infladas, que gotean o con las orillas abolladas.']],
+    tip: ['Keep a manual can opener in the kit. It\'s easy to forget.', 'Tengan un abrelatas manual en el kit. Es fácil olvidarlo.'],
+    src: 'Ready.gov, USDA' },
+  { id: 'trash', cat: 'living', icon: 'trash',
+    title: ['Trash and smells', 'Basura y olores'],
+    when: ['Trash pickup is late and bags are piling up.', 'La basura no pasa y se juntan las bolsas.'],
+    steps: [
+      ['Double-bag food scraps and diapers, squeeze the air out, and tie them tight.', 'Pongan los restos de comida y los pañales en doble bolsa, saquen el aire y amárrenlas bien.'],
+      ['Store bags outside in a can with a lid, in the shade, away from doors and windows.', 'Guarden las bolsas afuera en un bote con tapa, en la sombra, lejos de puertas y ventanas.'],
+      ['Rinse cans and flatten boxes so the bags last longer.', 'Enjuaguen las latas y aplasten las cajas para que las bolsas rindan más.'],
+      ['A sprinkle of baking soda or cat litter in the can bottom cuts the smell.', 'Un poco de bicarbonato o arena para gato en el fondo del bote quita el olor.']
+    ],
+    dont: [['Never burn trash. Keep spoiled food away from pets.', 'Nunca quemen la basura. Mantengan la comida echada a perder lejos de las mascotas.']],
+    tip: ['Check your city\'s site or 311 for changed pickup days after a storm.', 'Revisen la página de su ciudad o llamen al 311 para saber si cambiaron los días de recolección.'],
+    src: 'Ready.gov' },
+  { id: 'laundry', cat: 'living', icon: 'shirt',
+    title: ['Bucket laundry', 'Lavar ropa en cubeta'],
+    when: ['Day three or later, and you\'re out of clean socks and underwear.', 'El tercer día o después, y ya no hay calcetines ni ropa interior limpios.'],
+    steps: [
+      ['Fill a bucket halfway with water and a small squirt of soap. Wash only what you need: socks, underwear, kids\' clothes.', 'Llenen una cubeta a la mitad con agua y un chorrito de jabón. Laven solo lo necesario: calcetines, ropa interior, ropa de los niños.'],
+      ['Push and pull the clothes for a few minutes. A new, clean plunger works great as a washer.', 'Muevan la ropa unos minutos. Un destapador nuevo y limpio sirve muy bien de lavadora.'],
+      ['Rinse in a second bucket of clean water and wring hard.', 'Enjuaguen en otra cubeta con agua limpia y exprimen bien.'],
+      ['Hang on a line in the sun or in the warm room. Use the taut-line hitch to tighten the line.', 'Cuelguen en un tendedero al sol o en el cuarto tibio. Usen el nudo de tensión para tensar la cuerda.']
+    ],
+    dont: [['Save drinking water first. Use the soapy water afterward to flush the toilet.', 'Primero guarden el agua para tomar. Usen el agua jabonosa después para jalarle al baño.']],
+    tip: ['Pack a fresh set of socks and underwear per person in the go-bag.', 'Pongan un cambio de calcetines y ropa interior por persona en la mochila.'],
+    src: 'Ready.gov' },
+  { id: 'batteries', cat: 'living', icon: 'battery-charging',
+    title: ['Make phones and batteries last', 'Hacer que duren los teléfonos y las baterías'],
+    when: ['The outage could last more than a day.', 'El apagón podría durar más de un día.'],
+    steps: [
+      ['Turn on low-power mode, dim the screen, and close apps. Texts use less battery than calls.', 'Prendan el modo de ahorro de batería, bajen el brillo y cierren las apps. Los mensajes gastan menos que las llamadas.'],
+      ['Take turns: keep one adult phone on and the others in airplane mode. Check in on the hour.', 'Túrnense: un teléfono de adulto prendido y los demás en modo avión. Revisen cada hora.'],
+      ['Charge from power banks first. Recharge them in a car only when the car is running outside in open air, never in a garage.', 'Carguen primero con las baterías portátiles. Recárguenlas en el carro solo si está prendido afuera al aire libre, nunca en el garaje.'],
+      ['Use headlamps and lanterns on low. Solar garden lights can charge outside by day and light rooms at night.', 'Usen las lámparas en modo bajo. Las luces solares del jardín se cargan afuera de día y alumbran cuartos de noche.'],
+      ['Keep a battery or hand-crank radio on for news so phones can rest.', 'Tengan prendido un radio de baterías o de manivela para las noticias y así descansan los teléfonos.']
+    ],
+    dont: [['Don\'t fall asleep in a running car. Don\'t leave power banks charging on a bed or couch.', 'No se duerman en un carro prendido. No dejen baterías cargando sobre la cama o el sillón.']],
+    tip: ['Write key numbers on paper too. The fridge sheet in this app has them.', 'Escriban los números importantes también en papel. La hoja del refri de esta app los tiene.'],
+    src: 'Ready.gov, CDC' },
+  { id: 'kidsdays', cat: 'living', icon: 'puzzle',
+    title: ['Keeping kids calm and busy', 'Mantener a los niños tranquilos y ocupados'],
+    when: ['Day two of an outage and everyone is getting restless.', 'El segundo día del apagón y todos están inquietos.'],
+    steps: [
+      ['Keep the usual wake-up, meal and bedtime as much as you can. Routine is calming.', 'Mantengan la hora de levantarse, de comer y de dormir lo más que puedan. La rutina tranquiliza.'],
+      ['Give each child a job: light keeper, water checker, pet helper.', 'Denle a cada niño un trabajo: cuidador de la luz, revisor del agua, ayudante de la mascota.'],
+      ['Play with no power: cards, board games, a headlamp scavenger hunt, shadow puppets, story time in the blanket fort.', 'Jueguen sin luz: cartas, juegos de mesa, buscar tesoros con lámpara, sombras con las manos, cuentos en el fuerte de cobijas.'],
+      ['Explain simply what\'s happening and what the family is doing about it. Limit scary news.', 'Expliquen de forma sencilla qué pasa y qué está haciendo la familia. Limiten las noticias que asustan.'],
+      ['Glow sticks make great night lights and are safe for kids.', 'Las barras de luz son buenas lamparitas de noche y son seguras para los niños.']
+    ],
+    dont: [['No candles in kids\' rooms. Keep kids away from generators, grills and camp stoves.', 'Nada de velas en los cuartos de los niños. Mantengan a los niños lejos de generadores, parrillas y estufas de campamento.']],
+    tip: ['Kids Mode in this app walks them through it with a friendly voice.', 'El Modo niños de esta app los guía con una voz amigable.'],
+    src: 'Ready.gov, American Academy of Pediatrics' },
+  { id: 'tricks', cat: 'living', icon: 'sparkles',
+    title: ['Little tricks that help', 'Trucos pequeños que ayudan'],
+    when: ['Any outage. Most take a minute.', 'Cualquier apagón. Casi todos toman un minuto.'],
+    steps: [
+      ['Leave one lamp switched on so you know when the power comes back. Unplug TVs and computers to protect them from a surge.', 'Dejen una lámpara encendida para saber cuándo regresa la luz. Desconecten la tele y la computadora para protegerlas de un pico.'],
+      ['Freezer test: put a coin on top of a frozen cup of water. If the coin is at the bottom when you get back, the food thawed. Throw it out.', 'Prueba del congelador: pongan una moneda encima de un vaso de agua congelada. Si al regresar la moneda está en el fondo, la comida se descongeló. Tírenla.'],
+      ['Freeze water bottles and zip bags of water now to fill empty freezer space. They keep food cold longer and become drinking water.', 'Congelen ahora botellas y bolsas de agua para llenar el espacio vacío del congelador. Mantienen el frío más tiempo y luego son agua para tomar.'],
+      ['Put shoes and a headlamp next to every bed.', 'Pongan zapatos y una lámpara de cabeza junto a cada cama.'],
+      ['Fill the bathtub and some pots with water at the start.', 'Llenen la tina y unas ollas con agua al empezar.'],
+      ['Use a cooler as a "grab fridge" for drinks and snacks so the real fridge stays closed.', 'Usen una hielera como "refri de paso" para bebidas y botanas, así el refri de verdad se queda cerrado.']
+    ],
+    dont: [['Don\'t use the oven or stove to heat the home. Don\'t run a generator within 20 feet of doors or windows.', 'No usen el horno ni la estufa para calentar la casa. No prendan un generador a menos de 20 pies de puertas o ventanas.']],
+    tip: ['A small notebook and pen in the kit: track food hours, medicine times and who checked in.', 'Una libreta y una pluma en el kit: anoten las horas de la comida, de las medicinas y quién se reportó.'],
+    src: 'Ready.gov, USDA, CDC' }
 ];

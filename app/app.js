@@ -504,26 +504,38 @@ R.calls = () => {
 /* ---------- skills: how-to guides ---------- */
 const T = pair => lang === 'es' ? pair[1] : pair[0];
 const guideSeg = cur => `<div class="seg" role="group" aria-label="${L('Guides', 'Guías')}"><button aria-pressed="${cur === 'plan'}" data-go="plan">${L('Our plan', 'Nuestro plan')}</button><button aria-pressed="${cur === 'skills'}" data-go="skills">${L('Skills', 'Habilidades')}</button></div>`;
+const COVER = { aid: 'cpr', fire: 'firelay', knots: 'bowline-4', home: 'lantern', living: 'toilet' };
+const fig = (n, cls = 'fig') => `<img class="${cls}" src="img/skills/${n}${lang === 'es' ? '-es' : ''}.svg" alt="" loading="lazy" decoding="async">`;
+const skillCat = c => (window.SKILL_CATS || []).find(x => x[0] === c);
 R.skills = rest => {
+  if (rest && rest[0] && rest[0].startsWith('c-')) return skillGroup(rest[0].slice(2));
   if (rest && rest[0]) return skill(rest[0]);
   const S = window.SKILLS || [], C = window.SKILL_CATS || [];
   view.innerHTML = `<div class="screen">${bar(L('Skills', 'Habilidades'))}${guideSeg('skills')}
-    <p class="muted" style="padding:0 4px">${L('Short how-tos for an outage. Practice them on a normal day.', 'Guías cortas para un apagón. Practíquenlas en un día normal.')}</p>
-    ${C.map(([cat, icn, name, tone]) => `<div class="sub-label">${ic(icn)}${T(name)}</div><div class="list">${S.filter(x => x.cat === cat).map(x => `<button class="row" data-go="skills/${x.id}"><span class="qa-ic sm t-${tone}">${ic(x.icon)}</span><div class="grow"><b>${T(x.title)}</b></div>${ic('chevron-right', 'chev')}</button>`).join('')}</div>`).join('')}
+    <p class="muted" style="padding:0 4px">${L('Short how-tos with drawings. Practice them on a normal day.', 'Guías cortas con dibujos. Practíquenlas en un día normal.')}</p>
+    <div class="cat-grid">${C.map(([cat, icn, name, tone]) => { const n = S.filter(x => x.cat === cat).length; return `<button class="cat-card t-${tone}" data-go="skills/c-${cat}">${fig(COVER[cat], 'cover')}<span class="cat-name"><span class="qa-ic sm t-${tone}">${ic(icn)}</span><span><b>${T(name)}</b><small>${n} ${L('guides', 'guías')}</small></span></span></button>`; }).join('')}</div>
     <p class="muted small" style="padding:0 4px">${L('These are reminders, not training. A CPR and first-aid class (Red Cross or American Heart Association) is the best prep step there is.', 'Esto es un recordatorio, no un curso. Una clase de RCP y primeros auxilios (Cruz Roja o American Heart Association) es la mejor preparación que hay.')}</p></div>`;
 };
+function skillGroup(cat) {
+  const c = skillCat(cat); if (!c) return go('skills');
+  const S = (window.SKILLS || []).filter(x => x.cat === cat);
+  view.innerHTML = `<div class="screen"><header class="bar"><button class="back" data-back="skills" aria-label="${L('Back to skills', 'Volver a habilidades')}">${ic('arrow-left')}</button><h1>${T(c[2])}</h1></header>
+    <div class="list">${S.map(x => `<button class="row" data-go="skills/${x.id}"><span class="qa-ic sm t-${c[3]}">${ic(x.icon)}</span><div class="grow"><b>${T(x.title)}</b>${x.figs ? `<small>${ic('image')} ${L('with drawings', 'con dibujos')}</small>` : ''}</div>${ic('chevron-right', 'chev')}</button>`).join('')}</div></div>`;
+}
 function skill(id) {
-  const S = window.SKILLS || [], i = S.findIndex(x => x.id === id), x = S[i]; if (!x) return go('skills');
-  const cat = (window.SKILL_CATS || []).find(c => c[0] === x.cat) || [, , , 'amber'];
-  const nx = S[i + 1];
-  view.innerHTML = `<div class="screen"><header class="bar"><button class="back" data-back="skills" aria-label="${L('Back to skills', 'Volver a habilidades')}">${ic('arrow-left')}</button><h1>${T(x.title)}</h1></header>
+  const A = window.SKILLS || [], x = A.find(y => y.id === id); if (!x) return go('skills');
+  const cat = skillCat(x.cat) || [, , , 'amber'];
+  const S = A.filter(y => y.cat === x.cat), i = S.indexOf(x), nx = S[i + 1];
+  const figs = x.figs || {};
+  view.innerHTML = `<div class="screen"><header class="bar"><button class="back" data-back="skills/c-${x.cat}" aria-label="${L('Back', 'Volver')}">${ic('arrow-left')}</button><h1>${T(x.title)}</h1></header>
     <div class="skill-when t-${cat[3]}"><span class="qa-ic">${ic(x.icon)}</span><div><small>${L('When', 'Cuándo')}</small><p>${T(x.when)}</p></div></div>
     ${x.cat === 'aid' ? `<a class="call wide911" href="tel:911">${ic('siren')}<div><b>${L('Call 911', 'Llama al 911')}</b><small>${L('Call first, or have someone call while you help', 'Llama primero, o que alguien llame mientras ayudas')}</small></div></a>` : ''}
-    <ol class="steps-big">${x.steps.map(st => `<li>${T(st)}</li>`).join('')}</ol>
+    <ol class="steps-big">${x.steps.map((st, k) => `<li>${T(st)}${figs[k] ? fig(figs[k]) : ''}</li>`).join('')}</ol>
     ${x.dont && x.dont.length ? `<div class="dont">${ic('triangle-alert')}<div>${x.dont.map(d => `<p>${T(d)}</p>`).join('')}</div></div>` : ''}
     ${x.tip ? `<div class="tipbox">${ic('lightbulb')}<p>${T(x.tip)}</p></div>` : ''}
     <p class="muted small" style="padding:0 4px">${L('Source', 'Fuente')}: ${esc(x.src)}</p>
-    ${nx ? `<button class="list row" data-go="skills/${nx.id}"><div class="grow"><small>${L('Next', 'Siguiente')}</small><b>${T(nx.title)}</b></div>${ic('chevron-right', 'chev')}</button>` : ''}</div>`;
+    ${nx ? `<button class="list row" data-go="skills/${nx.id}"><div class="grow"><small>${L('Next', 'Siguiente')}</small><b>${T(nx.title)}</b></div>${ic('chevron-right', 'chev')}</button>`
+         : `<button class="list row" data-go="skills"><div class="grow"><small>${L('Done with', 'Terminaste')} ${T(cat[2])}</small><b>${L('See all skills', 'Ver todas las habilidades')}</b></div>${ic('chevron-right', 'chev')}</button>`}</div>`;
 }
 
 /* ---------- plan ---------- */

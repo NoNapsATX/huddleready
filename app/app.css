@@ -500,3 +500,15 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 .got summary{display:flex;align-items:center;gap:8px;padding:12px 16px;color:var(--ok);font-weight:700;cursor:pointer;list-style:none}
 .got summary::-webkit-details-marker{display:none}
 .got summary .ic{width:20px;height:20px}
+/* skill drawings */
+.steps-big .fig{display:block;width:calc(100% + 44px);max-width:none;height:auto;margin:12px 0 2px -44px;border-radius:12px;border:1px solid var(--line);background:#f7f8fc}
+.cat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cat-card{border:0;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);font:inherit;color:var(--ink);padding:8px 8px 12px;text-align:left;display:grid;gap:10px;min-width:0}
+.cat-card:last-child:nth-child(odd){grid-column:1/-1}
+.cat-card .cover{display:block;width:100%;height:auto;aspect-ratio:320/230;object-fit:cover;border-radius:10px;background:#f7f8fc}
+.cat-card:last-child:nth-child(odd){grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:center}
+.cat-name{display:flex;gap:10px;align-items:center;padding:0 4px;min-width:0}
+.cat-name>span:last-child{display:grid;min-width:0}
+.cat-name b{font-size:1rem;line-height:1.2;overflow-wrap:anywhere}
+.cat-name small{color:var(--muted);font-size:.85rem}
+.list .row small .ic,.list .row small svg{width:14px;height:14px;vertical-align:-2px}

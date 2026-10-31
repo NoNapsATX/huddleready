@@ -1,0 +1,45 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Huddle Ready//Reminders//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Recordatorios de Huddle Ready
+BEGIN:VEVENT
+UID:spring-check-es@huddleready
+DTSTAMP:20261031T035649Z
+DTSTART;VALUE=DATE:20270314
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+SUMMARY:Huddle Ready: revisión de primavera
+DESCRIPTION:Cambió la hora\, así que toca la revisión de cada seis meses
+ : prueba las alarmas de humo y de monóxido de carbono\, carga las baterí
+ as portátiles\, revisa la fecha de las medicinas\, cambia el agua guardad
+ a\, revisa la ropa de repuesto de los niños\, confirma los teléfonos y h
+ az un simulacro. Abre la app: https://nonapsatx.github.io/huddleready/app/
+ #check
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Huddle Ready: revisión de primavera
+TRIGGER:PT10H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:fall-check-es@huddleready
+DTSTAMP:20261031T035649Z
+DTSTART;VALUE=DATE:20261101
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+SUMMARY:Huddle Ready: revisión de otoño
+DESCRIPTION:Cambió la hora\, así que toca la revisión de cada seis meses
+ : prueba las alarmas de humo y de monóxido de carbono\, carga las baterí
+ as portátiles\, revisa la fecha de las medicinas\, cambia el agua guardad
+ a\, revisa la ropa de repuesto de los niños\, confirma los teléfonos y h
+ az un simulacro. Abre la app: https://nonapsatx.github.io/huddleready/app/
+ #check
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Huddle Ready: revisión de otoño
+TRIGGER:PT10H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

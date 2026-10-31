@@ -177,7 +177,7 @@ function route() {
   document.documentElement.classList.toggle('night', !!outage());
   if (name === 'kids') { kids.hidden = false; document.body.style.overflow = 'hidden'; (K[rest[0] || 'home'] || K.home)(rest.slice(1)); return; }
   kids.hidden = true; document.body.style.overflow = ''; try { voice.pause(); } catch (e) {}
-  if (!home && name !== 'setup') { location.replace('#setup'); return; }
+  if (!home && name !== 'setup' && name !== 'import') { location.replace('#setup'); return; }
   (R[name] || R.home)(rest);
   window.scrollTo(0, 0);
 }
@@ -207,7 +207,9 @@ R.home = () => {
   view.innerHTML = `<div class="screen">${top}${main}
     <div class="row2"><a class="call" href="tel:911">${ic('siren')}<div><b>911</b><small>${L('Emergency', 'Emergencia')}</small></div></a>${u.phone ? `<a class="call" href="${tel(u.phone)}">${ic('phone')}<div><b>${L('Outage', 'Apagón')}</b><small>${esc(u.phone)}</small></div></a>` : `<button class="call" data-go="details">${ic('phone')}<div><b>${L('Outage', 'Apagón')}</b><small>${L('Add number', 'Agregar número')}</small></div></button>`}</div>
     ${H().cross ? `<div class="where">${ic('map-pin')}<span>${L('Tell 911: we\'re near', 'Dile al 911: estamos cerca de')} <b>${esc(H().cross)}</b>${H().zip ? ', ' + esc(H().zip) : ''}</span></div>` : ''}
+    ${!o && checkDue() ? `<button class="finish due" data-go="check">${ic('bell')}<div><b>${L('Time for your twice-a-year check', 'Toca la revisión de cada seis meses')}</b><small>${L('Clocks changed. About 15 minutes.', 'Cambió la hora. Unos 15 minutos.')}</small></div>${ic('chevron-right', 'chev')}</button>` : ''}
     ${skipped && !o ? `<button class="finish" data-go="setup/resume">${ic('list-checks')}<div><b>${L('Finish setting up', 'Termina de configurar')}</b><small>${skipped} ${skipped > 1 ? L('questions left', 'preguntas pendientes') : L('question left', 'pregunta pendiente')}</small></div>${ic('chevron-right', 'chev')}</button>` : ''}
+    <button class="search home-search" data-go="find">${ic('search')}<span>${L('Search: fever, freezer, generator…', 'Buscar: fiebre, congelador, generador…')}</span></button>
     <div class="tiles">${tile('stay', 'door-open', L('Stay or go', 'Quedarse o irse'))}${tile('food', 'refrigerator', L('Food clock', 'Reloj de comida'))}${tile('calls', 'phone', L('Call list', 'Teléfonos'))}${tile('plan', 'book-open', L('Plan', 'Plan'))}${tile('supplies', 'list-checks', L('Supplies', 'Provisiones'))}${tile('details', 'house', L('Our info', 'Nuestra info'))}</div>
     ${o ? '' : `<button class="list row drill-row" data-go="drill"><span class="lead">${ic('timer')}</span><div class="grow"><b>${L('Practice drill', 'Simulacro')}</b><small>${drill ? L('Last one ', 'El último fue el ') + fmtDate(drill) : L('5 minutes. Walk through an outage before a real one.', '5 minutos. Practica un apagón antes de que pase de verdad.')}</small></div>${ic('chevron-right', 'chev')}</button>`}
     ${hasKids() ? `<button class="kids-btn" data-go="kids"><img src="${im('flashlight')}" alt=""><div><b>${L('Kids Mode', 'Modo niños')}</b><span>${L('Story and games with a voice', 'Cuento y juegos')}</span></div></button>` : ''}
@@ -349,8 +351,8 @@ R.calls = () => {
 };
 
 /* ---------- plan ---------- */
-const PLAN = window.PLAN || [];
-const esNote = () => lang === 'es' ? `<div class="es-note">${L('', 'El plan completo está en inglés por ahora. La traducción viene pronto.')}</div>` : '';
+const plan = () => (lang === 'es' && window.PLAN_ES && window.PLAN_ES.length) ? window.PLAN_ES : (window.PLAN || []);
+const esNote = () => lang === 'es' && !(window.PLAN_ES && window.PLAN_ES.length) ? `<div class="es-note">${L('', 'El plan completo está en inglés por ahora. La traducción viene pronto.')}</div>` : '';
 R.plan = (rest) => {
   if (rest[0]) return planSection(rest[0], rest[1]);
   const q0 = store.get('planq', '');
@@ -361,16 +363,16 @@ R.plan = (rest) => {
   function list() {
     const t = q.value.trim(); store.set('planq', t);
     const re = t ? new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi') : null;
-    const hits = PLAN.map(s => { const n = re ? (s.text.match(re) || []).length : 0; return { s, n }; }).filter(x => !re || x.n);
+    const hits = plan().map(s => { const n = re ? (s.text.match(re) || []).length : 0; return { s, n }; }).filter(x => !re || x.n);
     $('#secs').innerHTML = hits.length ? hits.map(({ s, n }) => `<button class="row" data-go="plan/${s.id}${re ? '/' + encodeURIComponent(t) : ''}"><span class="lead">${ic(s.icon)}</span><div class="grow"><b>${s.title}</b>${re ? `<small>${n} ${n > 1 ? L('matches', 'resultados') : L('match', 'resultado')}</small>` : ''}</div>${ic('chevron-right', 'chev')}</button>`).join('') : `<div class="empty">${L('No matches. Try a shorter word.', 'Sin resultados. Prueba una palabra más corta.')}</div>`;
   }
   q.oninput = list; list();
 };
 function planSection(id, q) {
-  const i = PLAN.findIndex(s => s.id === id); const s = PLAN[i]; if (!s) return go('plan');
-  const nx = PLAN[i + 1];
+  const P = plan(), i = P.findIndex(s => s.id === id); const s = P[i]; if (!s) return go('plan');
+  const nx = P[i + 1];
   view.innerHTML = `<div class="screen"><header class="bar"><button class="back" data-back="plan" aria-label="${L('Back to plan', 'Volver al plan')}">${ic('arrow-left')}</button><h1>${s.title}</h1></header>
-    <article class="doc" id="doc" lang="en">${s.html}</article>
+    <article class="doc" id="doc" lang="${plan() === window.PLAN_ES ? 'es' : 'en'}">${s.html}</article>
     ${nx ? `<button class="list row" data-go="plan/${nx.id}"><div class="grow"><small>${L('Next', 'Siguiente')}</small><b>${nx.title}</b></div>${ic('chevron-right', 'chev')}</button>` : ''}</div>`;
   if (q) {
     const t = decodeURIComponent(q), re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); let first = null;
@@ -378,6 +380,75 @@ function planSection(id, q) {
     walk($('#doc')); if (first) setTimeout(() => first.scrollIntoView({ block: 'center' }), 50);
   }
 }
+
+/* ---------- twice-a-year check (when the clocks change) ---------- */
+function nthSunday(y, m, n) { const d = new Date(y, m, 1); const first = (7 - d.getDay()) % 7 + 1; return new Date(y, m, first + 7 * (n - 1)); }
+function lastChange(now) { const y = now.getFullYear(); const c = [nthSunday(y - 1, 10, 1), nthSunday(y, 2, 2), nthSunday(y, 10, 1)].filter(d => d <= now); return c[c.length - 1]; }
+function checkDue() { const now = new Date(), lc = lastChange(now), done = store.get('lastCheck', 0); return (now - lc) < 30 * 864e5 && done < lc.getTime() ? lc : null; }
+const CHECK = () => [
+  ['alarms', L('Test smoke and carbon monoxide alarms; change batteries', 'Prueba las alarmas de humo y de monóxido de carbono; cambia las baterías')],
+  ['power', L('Charge power banks and the power station; test flashlights', 'Carga las baterías portátiles y la estación de energía; prueba las linternas')],
+  ['meds', L('Check medicine expiration dates; refill what\'s low', 'Revisa la fecha de caducidad de las medicinas; repón lo que falte')],
+  ['water', L('Rotate water you stored yourself', 'Cambia el agua que guardaste tú mismo')],
+  ...(hasKids() ? [['clothes', L("Swap kids' spare clothes for their current size", 'Cambia la ropa de repuesto de los niños a su talla actual')]] : []),
+  ...(H().pets ? [['pets', L('Check pet food and supplies', 'Revisa la comida y cosas de las mascotas')]] : []),
+  ['numbers', L('Re-check phone numbers in Our info, then share the plan again', 'Revisa los teléfonos en Nuestra info y vuelve a compartir el plan')],
+  ['drill', L('Do a practice drill', 'Haz un simulacro')]
+];
+R.check = () => {
+  const ticks = store.get('checkTicks', {}), items = CHECK(), done = store.get('lastCheck', 0);
+  view.innerHTML = `<div class="screen">${bar(L('Twice-a-year check', 'Revisión de cada seis meses'))}
+    <p class="muted" style="padding:0 4px">${L('Do this when the clocks change in March and November.', 'Hazla cuando cambia la hora en marzo y noviembre.')}${done ? ' ' + L('Last done ', 'La última fue el ') + fmtDate(done) + '.' : ''}</p>
+    <div class="list">${items.map(([id, t]) => `<label class="chk"><input type="checkbox" data-c="${id}" ${ticks[id] ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div>
+    <button class="btn wide" id="cdone">${ic('circle-check')}${L('Mark the check done', 'Marcar la revisión como hecha')}</button>
+    <a class="list row" href="${lang === 'es' ? 'reminders-es.ics' : 'reminders.ics'}" target="_blank" rel="noopener"><span class="lead">${ic('calendar-plus')}</span><div class="grow"><b>${L('Add reminders to my calendar', 'Agregar recordatorios a mi calendario')}</b><small>${L('Your calendar reminds you in March and November. Nothing is sent to us.', 'Tu calendario te avisa en marzo y noviembre. No se nos envía nada.')}</small></div>${ic('chevron-right', 'chev')}</a></div>`;
+  view.querySelectorAll('[data-c]').forEach(cb => cb.onchange = () => { const t = store.get('checkTicks', {}); if (cb.checked) t[cb.dataset.c] = 1; else delete t[cb.dataset.c]; store.set('checkTicks', t); });
+  $('#cdone').onclick = () => { store.set('lastCheck', Date.now()); store.set('checkTicks', {}); toast(L('Check done. See you in six months.', 'Revisión lista. Nos vemos en seis meses.')); go(''); };
+};
+
+/* ---------- find: screens and plan answers ---------- */
+const SHORTCUTS = () => [
+  ['outage', 'zap-off', L('First 10 minutes', 'Primeros 10 minutos'), 'power out outage checklist first steps report start luz apagón lista primeros pasos reportar'],
+  ['stay', 'door-open', L('Stay or go', 'Quedarse o irse'), 'stay go leave evacuate cold hot heat freeze temperature warm cool quedarse irse salir evacuar frío calor temperatura helada'],
+  ['food', 'refrigerator', L('Food clock', 'Reloj de comida'), 'food fridge freezer refrigerator milk meat eat spoil safe comida refri refrigerador congelador leche carne comer'],
+  ['calls', 'phone', L('Call list', 'Teléfonos'), 'call phone number 911 contact emergency doctor er hospital poison 211 311 electric llamar teléfono contacto emergencia doctor hospital veneno'],
+  ['supplies', 'list-checks', L('Supplies', 'Provisiones'), 'supplies kit water batteries buy checklist how much shopping provisiones agua baterías comprar lista cuánto'],
+  ['details', 'house', L('Our info', 'Nuestra info'), 'info address contacts settings language spanish english share family about cross streets zip info contactos ajustes idioma español inglés compartir familia'],
+  ['check', 'bell', L('Twice-a-year check', 'Revisión de cada seis meses'), 'check reminder calendar battery batteries alarm smoke expiration twice year revisión recordatorio calendario batería alarma humo caducidad'],
+  ['share', 'share-2', L('Share with family', 'Compartir con la familia'), 'share send family spouse grandparent link text compartir enviar familia esposa abuelos enlace mensaje'],
+  ['drill', 'timer', L('Practice drill', 'Simulacro'), 'drill practice test rehearse simulacro práctica ensayo'],
+  ['kids', 'baby', L('Kids Mode', 'Modo niños'), 'kids children child game story toddler niños niño juego cuento'],
+  ['plan', 'book-open', L('Our plan', 'Nuestro plan'), 'plan guide read medical first aid guía leer médica primeros auxilios']
+];
+const norm = t => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+R.find = () => {
+  const q0 = store.get('findq', '');
+  view.innerHTML = `<div class="screen">${bar(L('Search', 'Buscar'))}
+    <label class="search">${ic('search')}<input id="fq" type="search" enterkeyhint="search" placeholder="${L('fever, freezer, generator, tornado', 'fiebre, congelador, generador, tornado')}" value="${esc(q0)}" aria-label="${L('Search', 'Buscar')}"></label>
+    <div id="fres"></div></div>`;
+  const q = $('#fq');
+  function run() {
+    const t = q.value.trim(); store.set('findq', t);
+    if (t.length < 2) {
+      $('#fres').innerHTML = `<div class="label">${L('Try', 'Prueba')}</div><div class="chips">${(lang === 'es' ? ['fiebre', 'congelador', 'monóxido', 'agua', 'tornado', 'insulina', 'mascotas'] : ['fever', 'freezer', 'carbon monoxide', 'water', 'tornado', 'insulin', 'pets']).map(w => `<button class="chip" data-w="${w}">${w}</button>`).join('')}</div>`;
+      view.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { q.value = b.dataset.w; run(); }); return;
+    }
+    const n = norm(t), words = n.split(/\s+/).filter(Boolean);
+    const sc = SHORTCUTS().filter(([, , title, kw]) => words.every(w => norm(title + ' ' + kw).includes(w)) || norm(kw).split(' ').some(k => k.startsWith(n)));
+    const hits = [];
+    plan().forEach(sec => {
+      const sentences = sec.text.split(/\n|(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡0-9])/);
+      const found = sentences.filter(x => words.every(w => norm(x).includes(w)));
+      if (found.length) hits.push([sec, found.slice(0, 2), found.length]);
+    });
+    hits.sort((a, b) => b[2] - a[2]);
+    const mark = x => { const at = Math.max(0, norm(x).indexOf(words[0]) - 70); if (x.length > 200) x = (at > 0 ? '…' + x.slice(at, at + 190) : x.slice(0, 190)) + '…'; let h = esc(x); words.forEach(w => { const re = new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'); h = h.replace(re, '<mark>$1</mark>'); }); return h; };
+    $('#fres').innerHTML = (sc.length ? `<div class="label">${L('Go to', 'Ir a')}</div><div class="list">${sc.map(([go, icn, title]) => `<button class="row" data-go="${go}"><span class="lead">${ic(icn)}</span><div class="grow"><b>${title}</b></div>${ic('chevron-right', 'chev')}</button>`).join('')}</div>` : '') +
+      (hits.length ? `<div class="label">${L('In the plan', 'En el plan')}</div><div class="list">${hits.slice(0, 8).map(([sec, f, c]) => `<button class="row snip" data-go="plan/${sec.id}/${encodeURIComponent(t)}"><span class="lead">${ic(sec.icon)}</span><div class="grow"><b>${sec.title}</b>${f.map(x => `<small>${mark(x)}</small>`).join('')}${c > 2 ? `<small class="more">+${c - 2} ${L('more', 'más')}</small>` : ''}</div>${ic('chevron-right', 'chev')}</button>`).join('')}</div>` : '') +
+      (!sc.length && !hits.length ? `<div class="empty">${L('Nothing found. Try one simple word, like "water" or "cold".', 'No encontramos nada. Prueba una palabra sencilla, como "agua" o "frío".')}</div>` : '');
+  }
+  q.oninput = run; run(); setTimeout(() => q.focus(), 60);
+};
 
 /* ---------- supplies ---------- */
 const calcDefault = () => ({ a: (H().adults || 2), k: H().kids || 0, d: littles() ? 1 : 0, days: 14 });
@@ -414,7 +485,9 @@ R.details = () => {
   view.innerHTML = `<div class="screen">${bar(L('Our info', 'Nuestra info'))}
     ${langSeg()}
     <button class="list row" data-go="setup/edit"><span class="lead">${ic('house')}</span><div class="grow"><b>${L('Our household', 'Nuestro hogar')}</b><small>${sum}</small></div>${ic('chevron-right', 'chev')}</button>
-    <p class="muted" style="padding:0 4px">${L("Saved on this phone only. Fill these in on every adult's phone.", 'Se guarda solo en este teléfono. Llénalo en el teléfono de cada adulto.')}</p>
+    <button class="list row" data-go="check"><span class="lead">${ic('bell')}</span><div class="grow"><b>${L('Twice-a-year check and reminders', 'Revisión de cada seis meses y recordatorios')}</b><small>${store.get('lastCheck', 0) ? L('Last done ', 'La última fue el ') + fmtDate(store.get('lastCheck', 0)) : L('Add reminders to your calendar', 'Agrega recordatorios a tu calendario')}</small></div>${ic('chevron-right', 'chev')}</button>
+    <button class="list row share-row" data-go="share"><span class="lead">${ic('share-2')}</span><div class="grow"><b>${L('Share our plan with family', 'Compartir nuestro plan con la familia')}</b><small>${L('Send it to another phone by text. No account needed.', 'Envíalo a otro teléfono por mensaje. No necesitas cuenta.')}</small></div>${ic('chevron-right', 'chev')}</button>
+    <p class="muted" style="padding:0 4px">${L('Saved on this phone only. Changes here don\'t update other phones; share again after big changes.', 'Se guarda solo en este teléfono. Los cambios no se pasan solos a otros teléfonos; compártelo otra vez si cambias algo importante.')}</p>
     <div class="list">${infoFields().map(([k, t]) => `<label class="field"><span>${t}</span><input id="f-${k}" data-k="${k}" value="${esc(info[k] || '')}" autocomplete="off" ${k === 'phone' ? 'inputmode="tel"' : ''}></label>`).join('')}</div>
     <p class="muted small" style="padding:0 4px">${L('Huddle Ready is a planning aid, not medical advice. In an emergency, call 911.', 'Huddle Ready es una ayuda para planear, no es consejo médico. En una emergencia, llama al 911.')}</p>
     <details class="about"><summary>${ic('info')}${L('About Huddle Ready', 'Acerca de Huddle Ready')}</summary>
@@ -424,6 +497,45 @@ R.details = () => {
     </details></div>`;
   bindLang(R.details);
   let t; view.querySelectorAll('[data-k]').forEach(inp => inp.oninput = () => { info[inp.dataset.k] = inp.value.trim(); store.set('info', info); clearTimeout(t); t = setTimeout(() => toast(L('Saved', 'Guardado')), 600); });
+};
+
+/* ---------- share with family (the plan travels only inside the link) ---------- */
+const b64e = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64d = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
+function shareLink() {
+  const h = Object.assign({}, home); delete h.skipped; delete h.utilManual;
+  const i = Object.assign({}, info); if (Array.isArray(i.extra)) i.extra = i.extra.filter(x => x.n || x.p);
+  const data = b64e(JSON.stringify({ v: 1, h, i, l: lang }));
+  return location.href.split('#')[0] + '#import/' + data;
+}
+R.share = () => {
+  const url = shareLink();
+  const has = [L('Household answers', 'Respuestas del hogar'), H().cross && L('Cross streets', 'Calles que cruzan'), info.outside && L('Meeting spot', 'Lugar de reunión'), (info.fallback1 || info.fallback2) && L('Fallback places', 'Lugares de Plan B'),
+    ['contact', 'er', 'pediatrician', 'doctor', 'leasing'].some(k => info[k]) || (info.extra || []).length ? L('Contacts and phone numbers', 'Contactos y teléfonos') : null, info.gate && L('Gate code', 'Código de la reja'), info.phone && L('Our phone number', 'Nuestro teléfono')].filter(Boolean);
+  const msg = L("Here's our family's Huddle Ready outage plan. Open this link on your phone, then add the app to your home screen:", 'Este es el plan de apagones de nuestra familia en Huddle Ready. Abre este enlace en tu teléfono y luego agrega la app a tu pantalla de inicio:');
+  view.innerHTML = `<div class="screen">${bar(L('Share with family', 'Compartir con la familia'))}
+    <div class="card"><b>${L('The link includes', 'El enlace incluye')}</b><ul class="inc">${has.map(x => `<li>${x}</li>`).join('')}</ul>
+    <p class="muted small" style="margin:0">${L('Your details travel only inside the link. Nothing is stored on a server. Anyone who has the link can see them, so send it only to family. The supply checklist stays on each phone.', 'Tus datos viajan solo dentro del enlace. No se guarda nada en un servidor. Cualquiera que tenga el enlace puede verlos, así que envíalo solo a tu familia. La lista de provisiones se queda en cada teléfono.')}</p></div>
+    <button class="btn wide" id="sh">${ic('share-2')}${L('Send the link', 'Enviar el enlace')}</button>
+    <button class="btn ghost wide" id="cp">${ic('copy')}${L('Copy the link', 'Copiar el enlace')}</button>
+    <p class="muted small" style="padding:0 4px">${L('On the other phone, opening the link shows what will be added and asks before saving.', 'En el otro teléfono, al abrir el enlace se muestra lo que se va a agregar y se pregunta antes de guardar.')}</p></div>`;
+  const copy = () => { const done = () => toast(L('Link copied', 'Enlace copiado')); try { navigator.clipboard.writeText(msg + '\n' + url).then(done, () => prompt('', url)); } catch (e) { prompt('', url); } };
+  $('#cp').onclick = copy;
+  $('#sh').onclick = () => { if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg, url }).catch(() => {}); else copy(); };
+};
+R.import = rest => {
+  let d = null; try { d = JSON.parse(b64d(rest[0] || '')); } catch (e) {}
+  if (!d || d.v !== 1 || !d.h) { view.innerHTML = `<div class="screen">${bar(L('Import plan', 'Importar plan'))}<div class="empty">${L("This link didn't work. Ask for a new one.", 'Este enlace no funcionó. Pide uno nuevo.')}</div><button class="btn wide" data-go="">${L('Home', 'Inicio')}</button></div>`; return; }
+  const h = d.h, i = d.i || {};
+  const rows = [h.cross && [L('Near', 'Cerca de'), h.cross + (h.zip ? ', ' + h.zip : '')], [L('Household', 'Hogar'), `${h.adults || 0} ${h.adults === 1 ? L('adult', 'adulto') : L('adults', 'adultos')}${h.kids ? ', ' + h.kids + ' ' + (h.kids === 1 ? L('kid', 'niño') : L('kids', 'niños')) : ''}`], (UTILS[h.util] || h.utilName) && [L('Electric company', 'Compañía eléctrica'), (UTILS[h.util] && UTILS[h.util].name) || h.utilName],
+    i.outside && [L('Outside spot', 'Lugar afuera'), i.outside], i.fallback1 && [L('Fallback 1', 'Plan B 1'), i.fallback1], i.contact && [L('Out-of-area contact', 'Contacto fuera del área'), i.contact]].filter(Boolean);
+  view.innerHTML = `<div class="screen"><div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div><div class="brand">Huddle Ready</div><div class="muted small">${L('A family plan was shared with you', 'Te compartieron un plan familiar')}</div></div></div>
+    <div class="list">${rows.map(([k, v]) => `<div class="row"><div class="grow"><small>${esc(k)}</small><b>${esc(v)}</b></div></div>`).join('')}</div>
+    ${home ? `<div class="verdict v1"><b>${L('This replaces the plan on this phone', 'Esto reemplaza el plan de este teléfono')}</b><span>${L('Household answers and contacts are replaced. Your supply checklist stays.', 'Se reemplazan las respuestas del hogar y los contactos. Tu lista de provisiones se queda.')}</span></div>` : ''}
+    <button class="btn wide" id="imp">${L('Use this plan on this phone', 'Usar este plan en este teléfono')}</button>
+    <button class="btn ghost wide" id="no">${L('Cancel', 'Cancelar')}</button></div>`;
+  $('#imp').onclick = () => { home = Object.assign({ skipped: [] }, h); store.set('home', home); info = i; store.set('info', info); if (!store.get('lang', null) && d.l) setLang(d.l); history.replaceState(null, '', location.pathname); toast(L('Plan saved on this phone', 'Plan guardado en este teléfono')); route(); };
+  $('#no').onclick = () => { history.replaceState(null, '', location.pathname + (home ? '' : '#setup')); route(); };
 };
 
 /* ---------- setup: five questions, each skippable ---------- */

@@ -1,0 +1,43 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Huddle Ready//Reminders//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Huddle Ready reminders
+BEGIN:VEVENT
+UID:spring-check-en@huddleready
+DTSTAMP:20261031T035649Z
+DTSTART;VALUE=DATE:20270314
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+SUMMARY:Huddle Ready: spring check
+DESCRIPTION:Clocks changed\, so it's time for the twice-a-year outage check
+ : test smoke and CO alarms\, charge power banks\, check medicine dates\, r
+ otate stored water\, update kids' spare clothes\, re-check phone numbers a
+ nd do a practice drill. Open the app: https://nonapsatx.github.io/huddlere
+ ady/app/#check
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Huddle Ready: spring check
+TRIGGER:PT10H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:fall-check-en@huddleready
+DTSTAMP:20261031T035649Z
+DTSTART;VALUE=DATE:20261101
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+SUMMARY:Huddle Ready: fall check
+DESCRIPTION:Clocks changed\, so it's time for the twice-a-year outage check
+ : test smoke and CO alarms\, charge power banks\, check medicine dates\, r
+ otate stored water\, update kids' spare clothes\, re-check phone numbers a
+ nd do a practice drill. Open the app: https://nonapsatx.github.io/huddlere
+ ady/app/#check
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Huddle Ready: fall check
+TRIGGER:PT10H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

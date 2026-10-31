@@ -314,6 +314,75 @@ R.food = () => {
   draw(); route.tick = setInterval(() => { if (location.hash === '#food') draw(); }, 60000);
 };
 
+/* ---------- find help near me (OpenStreetMap, looked up once from the phone) ---------- */
+const NEAR_KIND = () => ({
+  er: [L('Emergency rooms', 'Salas de emergencias'), 'heart-pulse'], fire: [L('Fire stations', 'Estaciones de bomberos'), 'siren'],
+  pharm: [L('Pharmacies', 'Farmacias'), 'pill'], center: [L('Libraries and rec centers', 'Bibliotecas y centros recreativos'), 'library-big']
+});
+function milesBetween(a, b) { const R = 3958.8, r = x => x * Math.PI / 180, dLat = r(b[0] - a[0]), dLon = r(b[1] - a[1]); const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLon / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
+function parseNear(json, at) {
+  const out = { er: [], fire: [], pharm: [], center: [] };
+  (json.elements || []).forEach(e => {
+    const t = e.tags || {}, lat = e.lat != null ? e.lat : e.center && e.center.lat, lon = e.lon != null ? e.lon : e.center && e.center.lon;
+    if (lat == null || !t.name) return;
+    let k = null;
+    if ((t.amenity === 'hospital' || t.healthcare === 'hospital') && t.emergency !== 'no') k = 'er';
+    else if (t.emergency === 'yes' && t.healthcare) k = 'er';
+    else if (t.amenity === 'fire_station') k = 'fire';
+    else if (t.amenity === 'pharmacy') k = 'pharm';
+    else if (t.amenity === 'library' || t.amenity === 'community_centre') k = 'center';
+    if (!k) return;
+    const addr = [t['addr:housenumber'], t['addr:street']].filter(Boolean).join(' ');
+    out[k].push({ n: t.name, p: t.phone || t['contact:phone'] || '', a: addr, d: Math.round(milesBetween(at, [lat, lon]) * 10) / 10, la: Math.round(lat * 1e5) / 1e5, lo: Math.round(lon * 1e5) / 1e5,
+      kid: k === 'er' && /child|pediatric|niñ/i.test(t.name), h24: t.opening_hours === '24/7' });
+  });
+  const seen = new Set(), uniq = arr => arr.filter(x => { const key = x.n.toLowerCase() + Math.round(x.d * 2); if (seen.has(key)) return false; seen.add(key); return true; });
+  out.er = uniq(out.er.sort((a, b) => a.d - b.d)); const kidEr = out.er.find(x => x.kid); out.er = out.er.slice(0, 3); if (kidEr && !out.er.includes(kidEr)) out.er.push(kidEr);
+  out.fire = uniq(out.fire.sort((a, b) => a.d - b.d)).slice(0, 2);
+  out.pharm = uniq(out.pharm.sort((a, b) => (b.h24 - a.h24) || (a.d - b.d))).slice(0, 3).sort((a, b) => a.d - b.d);
+  out.center = uniq(out.center.sort((a, b) => a.d - b.d)).slice(0, 2);
+  return out;
+}
+async function lookupNear(lat, lon) {
+  const q = `[out:json][timeout:25];(nwr["amenity"="hospital"](around:16000,${lat},${lon});nwr["healthcare"="hospital"](around:16000,${lat},${lon});nwr["emergency"="yes"]["healthcare"](around:16000,${lat},${lon});nwr["amenity"="fire_station"](around:8000,${lat},${lon});nwr["amenity"="pharmacy"](around:6000,${lat},${lon});nwr["amenity"="library"](around:10000,${lat},${lon});nwr["amenity"="community_centre"](around:6000,${lat},${lon}););out center tags;`;
+  const hosts = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+  for (const h of hosts) {
+    try { const r = await fetch(h, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }); if (r.ok) return await r.json(); } catch (e) {}
+  }
+  throw new Error('lookup failed');
+}
+function nearSection() {
+  const nr = store.get('near', null), K = NEAR_KIND();
+  if (!nr) return `<div class="label">${L('Near us', 'Cerca de nosotros')}</div><button class="list row" data-go="near"><span class="lead">${ic('locate')}</span><div class="grow"><b>${L('Find help near me', 'Buscar ayuda cerca')}</b><small>${L('Nearest ERs, fire stations, pharmacies and warming centers, saved for offline', 'Emergencias, bomberos, farmacias y centros de calor más cercanos, guardados para usar sin internet')}</small></div>${ic('chevron-right', 'chev')}</button>`;
+  const item = x => `<div class="row"><div class="grow"><b>${esc(x.n)}${x.kid ? ` <span class="pill p-ok">${L('Kids', 'Niños')}</span>` : ''}${x.h24 ? ` <span class="pill p-ok">24 h</span>` : ''}</b><small>${x.d} mi${x.a ? ' · ' + esc(x.a) : ''}</small></div>${x.p ? `<a class="round" href="${tel(x.p)}" aria-label="${L('Call', 'Llamar a')} ${esc(x.n)}">${ic('phone')}</a>` : ''}<a class="round ghost" href="https://www.google.com/maps/dir/?api=1&destination=${x.la},${x.lo}" target="_blank" rel="noopener" aria-label="${L('Directions to', 'Cómo llegar a')} ${esc(x.n)}">${ic('navigation')}</a></div>`;
+  return `<div class="label">${L('Near us', 'Cerca de nosotros')}</div>` + Object.keys(K).filter(k => nr[k] && nr[k].length).map(k => `<div class="sub-label">${ic(K[k][1])}${K[k][0]}</div><div class="list">${nr[k].map(item).join('')}</div>`).join('') +
+    `<p class="muted small" style="padding:0 4px">${L('Saved ', 'Guardado el ')}${fmtDate(nr.at)}. ${L('Libraries and rec centers often serve as warming and cooling centers; check the radio for which are open. Directions need internet.', 'Las bibliotecas y centros recreativos muchas veces son centros de calor y frescura; escucha en la radio cuáles abren. Las direcciones necesitan internet.')} <button class="linkish" data-go="near">${L('Update', 'Actualizar')}</button></p><p class="muted small" style="padding:0 4px">© OpenStreetMap ${L('contributors', 'colaboradores')}</p>`;
+}
+R.near = () => {
+  view.innerHTML = `<div class="screen">${bar(L('Find help near me', 'Buscar ayuda cerca'))}
+    <div class="step"><div class="big" style="background:var(--accent-soft);color:var(--warn)">${ic('locate')}</div><h2>${L('Save nearby help for offline', 'Guarda la ayuda cercana para usar sin internet')}</h2>
+    <p>${L('The app asks your phone for its location once, rounds it to about half a mile, and looks up nearby emergency rooms, fire stations, pharmacies and libraries on OpenStreetMap, a free public map. The results are saved on this phone. Your location is not saved or sent to us.', 'La app le pide la ubicación a tu teléfono una vez, la redondea a casi un kilómetro y busca salas de emergencias, bomberos, farmacias y bibliotecas cercanas en OpenStreetMap, un mapa público y gratis. Los resultados se guardan en este teléfono. Tu ubicación no se guarda ni se nos envía.')}</p></div>
+    <button class="btn wide" id="go">${ic('locate')}${L('Use my location once', 'Usar mi ubicación una vez')}</button>
+    <p class="muted small" id="nmsg" style="padding:0 4px" aria-live="polite"></p>
+    <div class="label">${L('Or open a map app', 'O abre una app de mapas')}</div>
+    <div class="list">${[['emergency+room', L('Emergency rooms', 'Salas de emergencias')], ['fire+station', L('Fire stations', 'Estaciones de bomberos')], ['24+hour+pharmacy', L('24-hour pharmacies', 'Farmacias 24 horas')], ['warming+center', L('Warming or cooling centers', 'Centros de calor o frescura')]].map(([q, t]) => `<a class="row" href="https://www.google.com/maps/search/${q}+near+me" target="_blank" rel="noopener"><div class="grow"><b>${t}</b></div>${ic('chevron-right', 'chev')}</a>`).join('')}</div></div>`;
+  const msg = $('#nmsg'), btn = $('#go');
+  btn.onclick = () => {
+    if (!navigator.onLine) { msg.textContent = L('No internet right now. Try again when you have a signal, or use the saved list on the Call list.', 'No hay internet ahora. Inténtalo cuando tengas señal, o usa la lista guardada en Teléfonos.'); return; }
+    if (!navigator.geolocation) { msg.textContent = L("This phone can't share its location here. Use the map links below.", 'Este teléfono no puede compartir su ubicación aquí. Usa los enlaces de mapas.'); return; }
+    btn.disabled = true; msg.textContent = L('Finding your location…', 'Buscando tu ubicación…');
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const lat = Math.round(pos.coords.latitude * 100) / 100, lon = Math.round(pos.coords.longitude * 100) / 100;
+      msg.textContent = L('Looking up nearby places…', 'Buscando lugares cercanos…');
+      try {
+        const res = parseNear(await lookupNear(lat, lon), [lat, lon]);
+        if (!res.er.length && !res.fire.length && !res.pharm.length) { msg.textContent = L('Nothing found nearby. Use the map links below.', 'No encontramos nada cerca. Usa los enlaces de mapas.'); btn.disabled = false; return; }
+        res.at = Date.now(); store.set('near', res); toast(L('Saved for offline', 'Guardado para usar sin internet')); go('calls');
+      } catch (e) { msg.textContent = L("The map service didn't answer. Try again in a minute, or use the map links below.", 'El servicio de mapas no respondió. Inténtalo en un minuto, o usa los enlaces de mapas.'); btn.disabled = false; }
+    }, () => { msg.textContent = L('Location is off or was not allowed. You can turn it on in your phone settings, or use the map links below.', 'La ubicación está apagada o no se permitió. Puedes activarla en los ajustes del teléfono, o usar los enlaces de mapas.'); btn.disabled = false; }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
+  };
+};
+
 /* ---------- call list ---------- */
 let callEdit = false;
 R.calls = () => {
@@ -328,7 +397,8 @@ R.calls = () => {
       .concat(extra.filter(x => x.p).map(x => [x.n || L('Contact', 'Contacto'), x.p, '']));
     view.innerHTML = `<div class="screen">${head}${where}
       <div class="label">${L('Emergency', 'Emergencia')}</div><div class="list">${emergency().map(row).join('')}</div>
-      <div class="label">${L('Ours', 'Nuestros')}</div>${mine.length ? `<div class="list">${mine.map(rowMine).join('')}</div>` : `<button class="list row" id="cadd0"><span class="lead">${ic('plus')}</span><div class="grow"><b>${L('Add our contacts', 'Agregar nuestros contactos')}</b><small>${L('Out-of-area contact, fallback places, nearest ER, doctor', 'Contacto fuera del área, lugares de Plan B, emergencias, doctor')}</small></div></button>`}</div>`;
+      <div class="label">${L('Ours', 'Nuestros')}</div>${mine.length ? `<div class="list">${mine.map(rowMine).join('')}</div>` : `<button class="list row" id="cadd0"><span class="lead">${ic('plus')}</span><div class="grow"><b>${L('Add our contacts', 'Agregar nuestros contactos')}</b><small>${L('Out-of-area contact, fallback places, nearest ER, doctor', 'Contacto fuera del área, lugares de Plan B, emergencias, doctor')}</small></div></button>`}
+      ${nearSection()}</div>`;
     const a0 = $('#cadd0'); if (a0) a0.onclick = () => { callEdit = true; R.calls(); };
   } else {
     const u = util();
@@ -414,6 +484,7 @@ const SHORTCUTS = () => [
   ['calls', 'phone', L('Call list', 'Teléfonos'), 'call phone number 911 contact emergency doctor er hospital poison 211 311 electric llamar teléfono contacto emergencia doctor hospital veneno'],
   ['supplies', 'list-checks', L('Supplies', 'Provisiones'), 'supplies kit water batteries buy checklist how much shopping provisiones agua baterías comprar lista cuánto'],
   ['details', 'house', L('Our info', 'Nuestra info'), 'info address contacts settings language spanish english share family about cross streets zip info contactos ajustes idioma español inglés compartir familia'],
+  ['near', 'locate', L('Find help near me', 'Buscar ayuda cerca'), 'near nearby hospital er emergency room fire station pharmacy library warming cooling center shelter location map cerca hospital emergencias bomberos farmacia biblioteca centro refugio ubicación mapa'],
   ['check', 'bell', L('Twice-a-year check', 'Revisión de cada seis meses'), 'check reminder calendar battery batteries alarm smoke expiration twice year revisión recordatorio calendario batería alarma humo caducidad'],
   ['share', 'share-2', L('Share with family', 'Compartir con la familia'), 'share send family spouse grandparent link text compartir enviar familia esposa abuelos enlace mensaje'],
   ['drill', 'timer', L('Practice drill', 'Simulacro'), 'drill practice test rehearse simulacro práctica ensayo'],
@@ -493,7 +564,7 @@ R.details = () => {
     <details class="about"><summary>${ic('info')}${L('About Huddle Ready', 'Acerca de Huddle Ready')}</summary>
       <p>${L('A free outage plan for Central Texas families. No account, no ads, and nothing you type leaves this phone.', 'Un plan gratis para apagones para familias del centro de Texas. Sin cuenta, sin anuncios, y nada de lo que escribes sale de este teléfono.')}</p>
       <p><a href="../" target="_blank" rel="noopener">${L('Website, safety and privacy', 'Sitio web, seguridad y privacidad')}</a> · <a href="mailto:hello@huddleready.com">hello@huddleready.com</a></p>
-      <p class="muted small">${L('Credits: icons by Lucide (ISC license); illustrations by Microsoft Fluent Emoji (MIT license); voices made with the open Kokoro model and eSpeak NG.', 'Créditos: íconos de Lucide (licencia ISC); ilustraciones de Microsoft Fluent Emoji (licencia MIT); voces hechas con el modelo abierto Kokoro y eSpeak NG.')}</p>
+      <p class="muted small">${L('Credits: icons by Lucide (ISC license); illustrations by Microsoft Fluent Emoji (MIT license); voices made with the open Kokoro model and eSpeak NG; nearby places © OpenStreetMap contributors.', 'Créditos: íconos de Lucide (licencia ISC); ilustraciones de Microsoft Fluent Emoji (licencia MIT); voces hechas con el modelo abierto Kokoro y eSpeak NG; lugares cercanos © colaboradores de OpenStreetMap.')}</p>
     </details></div>`;
   bindLang(R.details);
   let t; view.querySelectorAll('[data-k]').forEach(inp => inp.oninput = () => { info[inp.dataset.k] = inp.value.trim(); store.set('info', info); clearTimeout(t); t = setTimeout(() => toast(L('Saved', 'Guardado')), 600); });

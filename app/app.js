@@ -152,11 +152,11 @@ function infoFields() {
   ];
 }
 
-/* ---------- audio (English recordings) ---------- */
+/* ---------- audio (recorded clips, English and Spanish) ---------- */
 const voice = new Audio(); voice.preload = 'auto';
 let queue = [], voiceOn = store.get('voice', true), unlocked = false;
-const canSpeak = () => voiceOn && lang === 'en';
-function playNext() { if (!queue.length) return; voice.src = 'audio/' + queue.shift() + '.mp3'; const p = voice.play(); if (p && p.catch) p.catch(() => { queue = []; }); }
+const canSpeak = () => voiceOn;
+function playNext() { if (!queue.length) return; voice.src = 'audio/' + (lang === 'es' ? 'es/' : '') + queue.shift() + '.mp3'; const p = voice.play(); if (p && p.catch) p.catch(() => { queue = []; }); }
 voice.addEventListener('ended', playNext);
 function say(...keys) { if (!canSpeak()) return; queue = keys; try { voice.pause(); } catch (e) {} playNext(); }
 function sayAfter(k) { if (!canSpeak()) return; queue.push(k); if (voice.paused) playNext(); }
@@ -172,7 +172,7 @@ const R = {};
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [name, ...rest] = h.split('/');
-  clearInterval(route.tick);
+  clearInterval(route.tick); if (name !== 'calls') callEdit = false;
   if (name === 'kids') { kids.hidden = false; document.body.style.overflow = 'hidden'; (K[rest[0] || 'home'] || K.home)(rest.slice(1)); return; }
   kids.hidden = true; document.body.style.overflow = ''; try { voice.pause(); } catch (e) {}
   if (!home && name !== 'setup') { location.replace('#setup'); return; }
@@ -310,14 +310,38 @@ R.food = () => {
 };
 
 /* ---------- call list ---------- */
+let callEdit = false;
 R.calls = () => {
   const row = ([n, num, sub]) => `<div class="row"><div class="grow"><b>${esc(n)}</b><small>${esc(num)}${sub ? ' · ' + esc(sub) : ''}</small></div><a class="round" href="${tel(num)}" aria-label="${L('Call', 'Llamar a')} ${esc(n)}">${ic('phone')}</a></div>`;
-  const keys = [['contact', L('Out-of-area contact', 'Contacto fuera del área')], ['fallback1', L('Fallback 1', 'Plan B 1')], ['fallback2', L('Fallback 2', 'Plan B 2')], ['leasing', L('Leasing / maintenance', 'Oficina / mantenimiento')], ['er', L('Nearest ER', 'Emergencias más cercana')], ['pediatrician', L('Pediatrician', 'Pediatra')], ['doctor', L('Doctor', 'Doctor')]];
-  const mine = keys.filter(([k]) => info[k]).map(([k, n]) => { const m = String(info[k]).match(/[+\d][\d\s().-]{6,}/); return m ? [n, m[0].trim(), info[k].replace(m[0], '').replace(/[,\s]+$/, '').trim()] : null; }).filter(Boolean);
-  view.innerHTML = `<div class="screen">${bar(L('Call list', 'Teléfonos'))}
-    ${H().cross ? `<div class="where">${ic('map-pin')}<span>${L('Tell 911: we\'re near', 'Dile al 911: estamos cerca de')} <b>${esc(H().cross)}</b>${H().zip ? ', ' + esc(H().zip) : ''}</span></div>` : ''}
-    <div class="label">${L('Emergency', 'Emergencia')}</div><div class="list">${emergency().map(row).join('')}</div>
-    <div class="label">${L('Ours', 'Nuestros')}</div>${mine.length ? `<div class="list">${mine.map(row).join('')}</div>` : ''}<button class="list row" data-go="details"><div class="grow"><b>${mine.length ? L('Edit our contacts', 'Editar nuestros contactos') : L('Add our contacts', 'Agregar nuestros contactos')}</b><small>${L('Out-of-area contact, fallback places, nearest ER, doctor', 'Contacto fuera del área, lugares de Plan B, emergencias, doctor')}</small></div>${ic('chevron-right', 'chev')}</button></div>`;
+  const keys = [['contact', L('Out-of-area contact', 'Contacto fuera del área')], ['fallback1', L('Fallback 1', 'Plan B 1')], ['fallback2', L('Fallback 2', 'Plan B 2')], ...(apt() ? [['leasing', L('Leasing / maintenance', 'Oficina / mantenimiento')]] : []), ['er', L('Nearest ER', 'Emergencias más cercana')], hasKids() ? ['pediatrician', L('Pediatrician', 'Pediatra')] : ['doctor', L('Doctor', 'Doctor')]];
+  const extra = Array.isArray(info.extra) ? info.extra : [];
+  const head = `<header class="bar"><button class="back" data-back aria-label="${L('Back', 'Atrás')}">${ic('arrow-left')}</button><h1>${L('Call list', 'Teléfonos')}</h1><button class="bar-act" id="cedit">${callEdit ? ic('check') + L('Done', 'Listo') : ic('pencil') + L('Edit', 'Editar')}</button></header>`;
+  const where = H().cross ? `<div class="where">${ic('map-pin')}<span>${L('Tell 911: we\'re near', 'Dile al 911: estamos cerca de')} <b>${esc(H().cross)}</b>${H().zip ? ', ' + esc(H().zip) : ''}</span></div>` : '';
+  if (!callEdit) {
+    const mine = keys.filter(([k]) => info[k]).map(([k, n]) => { const m = String(info[k]).match(/[+\d][\d\s().-]{6,}/); return m ? [n, m[0].trim(), info[k].replace(m[0], '').replace(/[,\s]+$/, '').trim()] : null; }).filter(Boolean)
+      .concat(extra.filter(x => x.p).map(x => [x.n || L('Contact', 'Contacto'), x.p, '']));
+    view.innerHTML = `<div class="screen">${head}${where}
+      <div class="label">${L('Emergency', 'Emergencia')}</div><div class="list">${emergency().map(row).join('')}</div>
+      <div class="label">${L('Ours', 'Nuestros')}</div>${mine.length ? `<div class="list">${mine.map(row).join('')}</div>` : `<button class="list row" id="cadd0"><span class="lead">${ic('plus')}</span><div class="grow"><b>${L('Add our contacts', 'Agregar nuestros contactos')}</b><small>${L('Out-of-area contact, fallback places, nearest ER, doctor', 'Contacto fuera del área, lugares de Plan B, emergencias, doctor')}</small></div></button>`}</div>`;
+    const a0 = $('#cadd0'); if (a0) a0.onclick = () => { callEdit = true; R.calls(); };
+  } else {
+    const u = util();
+    view.innerHTML = `<div class="screen">${head}
+      <p class="muted" style="padding:0 4px">${L('Changes save as you type, on this phone only. Put the phone number anywhere in the box.', 'Los cambios se guardan al escribir, solo en este teléfono. Pon el número en cualquier parte del recuadro.')}</p>
+      <div class="label">${L('Electric company', 'Compañía eléctrica')}</div>
+      <button class="list row" data-go="setup/edit"><span class="lead">${ic('zap')}</span><div class="grow"><b>${esc(u.name)}</b><small>${esc(u.phone || L('No number yet', 'Sin número todavía'))} · ${L('change in Where you live', 'cámbiala en Dónde viven')}</small></div>${ic('chevron-right', 'chev')}</button>
+      <div class="label">${L('Ours', 'Nuestros')}</div>
+      <div class="list">${keys.map(([k, n]) => `<label class="field"><span>${n}</span><input data-k="${k}" value="${esc(info[k] || '')}" placeholder="${L('Name, phone', 'Nombre, teléfono')}" autocomplete="off"></label>`).join('')}</div>
+      <div class="label">${L('More people and places', 'Más personas y lugares')}</div>
+      <div class="list" id="extras">${extra.map((x, i) => `<div class="field xrow"><input data-x="${i},n" value="${esc(x.n || '')}" placeholder="${L('Name', 'Nombre')}" aria-label="${L('Name', 'Nombre')}"><input data-x="${i},p" value="${esc(x.p || '')}" placeholder="${L('Phone', 'Teléfono')}" inputmode="tel" aria-label="${L('Phone', 'Teléfono')}"><button class="xdel" data-del="${i}" aria-label="${L('Remove', 'Quitar')} ${esc(x.n || '')}">${ic('trash')}</button></div>`).join('')}
+        <button class="row" id="cadd"><span class="lead">${ic('plus')}</span><div class="grow"><b>${L('Add a contact', 'Agregar un contacto')}</b><small>${L('Neighbor, grandparent, daycare, vet', 'Vecino, abuelos, guardería, veterinario')}</small></div></button></div></div>`;
+    let t; const saved = () => { store.set('info', info); clearTimeout(t); t = setTimeout(() => toast(L('Saved', 'Guardado')), 600); };
+    view.querySelectorAll('[data-k]').forEach(inp => inp.oninput = () => { info[inp.dataset.k] = inp.value.trim(); saved(); });
+    view.querySelectorAll('[data-x]').forEach(inp => inp.oninput = () => { const [i, f] = inp.dataset.x.split(','); info.extra[+i][f] = inp.value.trim(); saved(); });
+    view.querySelectorAll('[data-del]').forEach(b => { let armed = false; b.onclick = () => { if (!armed) { armed = true; b.classList.add('armed'); b.setAttribute('aria-label', L('Tap again to remove', 'Toca otra vez para quitar')); setTimeout(() => { armed = false; b.classList.remove('armed'); }, 2500); return; } info.extra.splice(+b.dataset.del, 1); store.set('info', info); R.calls(); }; });
+    $('#cadd').onclick = () => { info.extra = extra.concat([{ n: '', p: '' }]); store.set('info', info); R.calls(); const ins = view.querySelectorAll('[data-x$=",n"]'); if (ins.length) ins[ins.length - 1].focus(); };
+  }
+  $('#cedit').onclick = () => { callEdit = !callEdit; if (!callEdit) { info.extra = (info.extra || []).filter(x => x.n || x.p); store.set('info', info); } R.calls(); };
 };
 
 /* ---------- plan ---------- */
@@ -471,15 +495,14 @@ R.setup = (rest) => {
 
 /* ================= Kids Mode ================= */
 const K = {};
-const soundBtn = () => lang === 'en' ? `<button class="k-sound ${voiceOn ? '' : 'off'}" id="snd" aria-label="${voiceOn ? 'Voice on' : 'Voice off'}">${ic(voiceOn ? 'volume-2' : 'volume-x')}</button>` : '';
+const soundBtn = () => `<button class="k-sound ${voiceOn ? '' : 'off'}" id="snd" aria-label="${voiceOn ? L('Voice on', 'Voz encendida') : L('Voice off', 'Voz apagada')}">${ic(voiceOn ? 'volume-2' : 'volume-x')}</button>`;
 const kbar = (title, extra) => `<div class="k-top"><button class="k-home" data-k="home" aria-label="${L('Kids home', 'Inicio de niños')}"><img src="${im('house')}" alt=""></button><span class="k-title">${title}</span><div class="k-tools">${extra || ''}${soundBtn()}</div></div>`;
 kview.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) go('kids/' + b.dataset.k); const s = e.target.closest('#snd'); if (s) { voiceOn = !voiceOn; store.set('voice', voiceOn); if (!voiceOn) { queue = []; voice.pause(); } s.classList.toggle('off', !voiceOn); s.innerHTML = ic(voiceOn ? 'volume-2' : 'volume-x'); } });
-const readBtn = id => lang === 'en' ? `<button class="k-btn soft" id="${id}" style="width:100%">${ic('volume-2')}Read it</button>` : '';
+const readBtn = id => `<button class="k-btn soft" id="${id}" style="width:100%">${ic('volume-2')}${L('Read it', 'Léelo')}</button>`;
 
 K.home = () => {
   kview.innerHTML = `<div class="k-top"><div class="k-tools" style="margin-left:0;flex:1;justify-content:space-between"><button class="hold" id="hold">${ic('lock')}${L('Hold to exit', 'Mantén para salir')}<i></i></button>${soundBtn()}</div></div>
     <div class="k-hello"><img src="${im('moon')}" alt=""><h1>${L('Hi, light helpers!', '¡Hola, ayudantes de la luz!')}</h1></div>
-    ${lang === 'es' ? `<p class="k-es">Grown-ups: la voz grabada está solo en inglés por ahora. Lean los textos en voz alta con los niños.</p>`.replace('Grown-ups: ', 'Adultos: ') : ''}
     <div class="k-grid">
       <button class="k-tile c1" data-k="story"><img src="${im('book')}" alt="">${L('Story', 'Cuento')}</button>
       <button class="k-tile c2" data-k="hunt"><img src="${im('flashlight')}" alt="">${L('Flashlight', 'Linterna')}</button>
@@ -506,15 +529,16 @@ const STORY = () => [
   ['house', '#cfe8ff', L('If we ever get lost, we stay where we are and ask a helper to find our grown-ups.', 'Si nos perdemos, nos quedamos donde estamos y le pedimos a alguien que nos ayude a encontrar a nuestros adultos.')]
 ];
 const SKEY = ['story0g', 'story1', 'story2', 'story3', 'story4', 'story5g', 'story6g'];
+const skey = i => lang === 'es' ? 'story' + i : SKEY[i];
 let si = 0;
 K.story = () => {
   const S = STORY(), [p, bg, t] = S[si];
   kview.innerHTML = `${kbar(L('Story', 'Cuento'))}<div class="k-card"><div class="k-pic" style="background:${bg}"><img src="${im(p)}" alt=""></div><p class="k-text">${t}</p><div class="k-dots">${S.map((_, i) => `<span class="${i === si ? 'on' : ''}"></span>`).join('')}</div>
     <div class="k-nav"><button class="k-btn soft" id="sb" ${si === 0 ? 'disabled' : ''}>${L('Back', 'Atrás')}</button><button class="k-btn" id="sn">${si === S.length - 1 ? L('Again', 'Otra vez') : L('Next', 'Sigue')}</button></div>
     ${readBtn('sr')}</div>`;
-  $('#sn').onclick = () => { si = (si + 1) % S.length; K.story(); say(SKEY[si]); };
-  $('#sb').onclick = () => { if (si) { si--; K.story(); say(SKEY[si]); } };
-  const r = $('#sr'); if (r) r.onclick = () => say(SKEY[si]);
+  $('#sn').onclick = () => { si = (si + 1) % S.length; K.story(); say(skey(si)); };
+  $('#sb').onclick = () => { if (si) { si--; K.story(); say(skey(si)); } };
+  const r = $('#sr'); if (r) r.onclick = () => say(skey(si));
 };
 
 /* flashlight hunt */
@@ -569,7 +593,7 @@ K.safe = () => {
   function ans(v) {
     if (answered) return next(); answered = true;
     const [, , safe, why] = Q[qi], right = v === !!safe; if (right) score++;
-    $('#fb').textContent = (right ? L('Great job! ', '¡Muy bien! ') : L('Not quite. ', 'Casi. ')) + why; say('q' + qi + (right ? 'right' : 'wrong') + (qi === 2 ? 'g' : ''));
+    $('#fb').textContent = (right ? L('Great job! ', '¡Muy bien! ') : L('Not quite. ', 'Casi. ')) + why; say('q' + qi + (right ? 'right' : 'wrong') + (qi === 2 && lang === 'en' ? 'g' : ''));
     kview.querySelectorAll('.k-stars img').forEach((s, i) => s.classList.toggle('lit', i < score));
     timer = setTimeout(next, 4600);
   }

@@ -191,7 +191,7 @@ view.addEventListener('click', e => {
 R.home = () => {
   const o = outage();
   const top = `<div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div><div class="brand">Huddle Ready</div><div class="status ${swOK ? 'ok' : ''}" id="status"><i></i><span>${swOK ? L('Works offline', 'Funciona sin internet') : L('Saving for offline…', 'Guardando para usar sin internet…')}</span></div></div>
-    <button class="icon-btn" data-go="details" aria-label="${L('Our info and settings', 'Nuestra info y ajustes')}">${ic('settings')}</button></div>`;
+    <button class="lang-chip" id="lang" lang="${lang === 'es' ? 'en' : 'es'}" aria-label="${L('Cambiar a español', 'Switch to English')}">${ic('languages')}${L('ES', 'EN')}</button><button class="icon-btn" data-go="details" aria-label="${L('Our info and settings', 'Nuestra info y ajustes')}">${ic('settings')}</button></div>`;
   let main;
   if (o) {
     const ft = outTime() || o.start, left = 4 * 3600000 - (Date.now() - ft);
@@ -212,6 +212,7 @@ R.home = () => {
     ${o ? '' : `<button class="list row drill-row" data-go="drill"><span class="lead">${ic('timer')}</span><div class="grow"><b>${L('Practice drill', 'Simulacro')}</b><small>${drill ? L('Last one ', 'El último fue el ') + fmtDate(drill) : L('5 minutes. Walk through an outage before a real one.', '5 minutos. Practica un apagón antes de que pase de verdad.')}</small></div>${ic('chevron-right', 'chev')}</button>`}
     ${hasKids() ? `<button class="kids-btn" data-go="kids"><img src="${im('flashlight')}" alt=""><div><b>${L('Kids Mode', 'Modo niños')}</b><span>${L('Story and games with a voice', 'Cuento y juegos')}</span></div></button>` : ''}
     <div class="meet">${ic('map-pin')}<span>${L('Meeting point: home', 'Punto de reunión: casa')}${where ? ' (' + esc(where) + ')' : ''}${info.outside ? L('. Outside spot: ', '. Lugar afuera: ') + esc(info.outside) : ''}</span></div></div>`;
+  $('#lang').onclick = () => { setLang(lang === 'es' ? 'en' : 'es'); R.home(); };
   const sos = $('#sos'); if (sos) sos.onclick = () => { const now = Date.now(); store.set('outage', { start: now, step: 0, done: false }); store.set('outTime', now); go('outage'); };
   const end = $('#end'); if (end) { let armed = false; end.onclick = () => { if (!armed) { armed = true; end.textContent = L('Tap again to confirm', 'Toca otra vez para confirmar'); setTimeout(() => { armed = false; end.textContent = L('Power is back', 'Ya volvió la luz'); }, 3000); return; } store.set('outage', null); document.documentElement.classList.remove('night'); toast(L('Glad it\'s back. Check food before eating.', 'Qué bueno. Revisa la comida antes de comer.')); R.home(); }; }
   route.tick = setInterval(() => { const o = outage(); if (!o) return; const e = $('#elapsed'), f = $('#fridge'); const left = 4 * 3600000 - (Date.now() - (outTime() || o.start)); if (e) e.textContent = fmtDur(Date.now() - o.start); if (f) f.textContent = fridgeLeft(left); }, 30000);
@@ -641,6 +642,8 @@ let swOK = false;
 function setStatus(ok, t) { swOK = ok; const s = $('#status'); if (s) { s.classList.toggle('ok', ok); s.querySelector('span').textContent = t; } }
 const onlineText = () => navigator.onLine ? L('Works offline', 'Funciona sin internet') : L('Offline · all good', 'Sin internet · todo bien');
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  const hadSW = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadSW && !reloaded) { reloaded = true; location.reload(); } });
   navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => setStatus(true, onlineText())).catch(() => setStatus(false, L('Offline saving unavailable', 'No se pudo guardar para usar sin internet')));
 } else setStatus(false, L('Offline saving unavailable', 'No se pudo guardar para usar sin internet'));
 addEventListener('offline', () => swOK && setStatus(true, onlineText()));

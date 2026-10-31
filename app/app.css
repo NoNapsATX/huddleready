@@ -322,3 +322,10 @@ button.call{border:0;font:inherit;text-align:left;color:inherit}
 .screen.docked{padding-bottom:90px}
 /* toasts sit above the pinned button */
 .toast{bottom:auto;top:calc(14px + env(safe-area-inset-top,0px))}
+
+/* language switch on the home screen */
+.lang-chip{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:700;font-size:.92rem;border-radius:99px;padding:8px 12px;min-height:40px}
+.lang-chip .ic{width:18px;height:18px;color:var(--muted)}
+.lang-chip + .icon-btn{margin-left:4px}
+
+.home-top .brand{white-space:nowrap}

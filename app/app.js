@@ -21,7 +21,7 @@ const im = n => `img/${n}.svg`;
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tel = n => 'tel:' + String(n).replace(/[^\d+]/g, '');
 const go = h => { if (location.hash.slice(1) === h) route(); else location.hash = h; };
-function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2000); }
+function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; el.classList.toggle('high', !!document.querySelector('.screen.docked')); clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2000); }
 function fmtDur(ms) { ms = Math.max(0, ms); const h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000); return h ? `${h} h ${m} min` : `${m} min`; }
 const bar = title => `<header class="bar"><button class="back" data-back aria-label="${L('Back', 'Atrás')}">${ic('arrow-left')}</button><h1>${title}</h1></header>`;
 const fmtDate = ms => new Date(ms).toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric' });
@@ -357,7 +357,7 @@ R.plan = (rest) => {
   if (rest[0]) return planSection(rest[0], rest[1]);
   const q0 = store.get('planq', '');
   view.innerHTML = `<div class="screen">${bar(L('Our plan', 'Nuestro plan'))}${esNote()}
-    <label class="search">${ic('search')}<input id="q" type="search" placeholder="${L('Search: fever, freezer, tornado', 'Buscar en inglés: fever, freezer, tornado')}" value="${esc(q0)}" aria-label="${L('Search the plan', 'Buscar en el plan')}"></label>
+    <label class="search">${ic('search')}<input id="q" type="search" placeholder="${L('Search: fever, freezer, tornado', 'Buscar: fiebre, congelador, tornado')}" value="${esc(q0)}" aria-label="${L('Search the plan', 'Buscar en el plan')}"></label>
     <div class="list" id="secs"></div></div>`;
   const q = $('#q');
   function list() {

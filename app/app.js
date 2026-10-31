@@ -486,7 +486,7 @@ const SHORTCUTS = () => [
   ['details', 'house', L('Our info', 'Nuestra info'), 'info address contacts settings language spanish english share family about cross streets zip info contactos ajustes idioma español inglés compartir familia'],
   ['near', 'locate', L('Find help near me', 'Buscar ayuda cerca'), 'near nearby hospital er emergency room fire station pharmacy library warming cooling center shelter location map cerca hospital emergencias bomberos farmacia biblioteca centro refugio ubicación mapa'],
   ['check', 'bell', L('Twice-a-year check', 'Revisión de cada seis meses'), 'check reminder calendar battery batteries alarm smoke expiration twice year revisión recordatorio calendario batería alarma humo caducidad'],
-  ['share', 'share-2', L('Share with family', 'Compartir con la familia'), 'share send family spouse grandparent link text compartir enviar familia esposa abuelos enlace mensaje'],
+  ['share', 'share-2', L('Share our plan (household only)', 'Compartir nuestro plan (solo la familia de casa)'), 'share send family spouse grandparent link text compartir enviar familia esposa abuelos enlace mensaje'],
   ['drill', 'timer', L('Practice drill', 'Simulacro'), 'drill practice test rehearse simulacro práctica ensayo'],
   ['kids', 'baby', L('Kids Mode', 'Modo niños'), 'kids children child game story toddler niños niño juego cuento'],
   ['plan', 'book-open', L('Our plan', 'Nuestro plan'), 'plan guide read medical first aid guía leer médica primeros auxilios']
@@ -557,7 +557,8 @@ R.details = () => {
     ${langSeg()}
     <button class="list row" data-go="setup/edit"><span class="lead">${ic('house')}</span><div class="grow"><b>${L('Our household', 'Nuestro hogar')}</b><small>${sum}</small></div>${ic('chevron-right', 'chev')}</button>
     <button class="list row" data-go="check"><span class="lead">${ic('bell')}</span><div class="grow"><b>${L('Twice-a-year check and reminders', 'Revisión de cada seis meses y recordatorios')}</b><small>${store.get('lastCheck', 0) ? L('Last done ', 'La última fue el ') + fmtDate(store.get('lastCheck', 0)) : L('Add reminders to your calendar', 'Agrega recordatorios a tu calendario')}</small></div>${ic('chevron-right', 'chev')}</button>
-    <button class="list row share-row" data-go="share"><span class="lead">${ic('share-2')}</span><div class="grow"><b>${L('Share our plan with family', 'Compartir nuestro plan con la familia')}</b><small>${L('Send it to another phone by text. No account needed.', 'Envíalo a otro teléfono por mensaje. No necesitas cuenta.')}</small></div>${ic('chevron-right', 'chev')}</button>
+    <button class="list row share-row" id="shareapp"><span class="lead">${ic('share-2')}</span><div class="grow"><b>${L('Share the app', 'Compartir la app')}</b><small>${L('Send family and friends the link so they can set up their own plan. None of your details are included.', 'Envía el enlace a familia y amigos para que hagan su propio plan. No incluye ninguno de tus datos.')}</small></div>${ic('chevron-right', 'chev')}</button>
+    <button class="list row" data-go="share"><span class="lead">${ic('users')}</span><div class="grow"><b>${L('Share our plan (household only)', 'Compartir nuestro plan (solo la familia de casa)')}</b><small>${L('For a spouse or caregiver who should have your same contacts and meeting spots', 'Para tu pareja o quien cuida a los niños, con los mismos contactos y lugares de reunión')}</small></div>${ic('chevron-right', 'chev')}</button>
     <p class="muted" style="padding:0 4px">${L('Saved on this phone only. Changes here don\'t update other phones; share again after big changes.', 'Se guarda solo en este teléfono. Los cambios no se pasan solos a otros teléfonos; compártelo otra vez si cambias algo importante.')}</p>
     <div class="list">${infoFields().map(([k, t]) => `<label class="field"><span>${t}</span><input id="f-${k}" data-k="${k}" value="${esc(info[k] || '')}" autocomplete="off" ${k === 'phone' ? 'inputmode="tel"' : ''}></label>`).join('')}</div>
     <p class="muted small" style="padding:0 4px">${L('Huddle Ready is a planning aid, not medical advice. In an emergency, call 911.', 'Huddle Ready es una ayuda para planear, no es consejo médico. En una emergencia, llama al 911.')}</p>
@@ -567,6 +568,7 @@ R.details = () => {
       <p class="muted small">${L('Credits: icons by Lucide (ISC license); illustrations by Microsoft Fluent Emoji (MIT license); voices made with the open Kokoro model and eSpeak NG; nearby places © OpenStreetMap contributors.', 'Créditos: íconos de Lucide (licencia ISC); ilustraciones de Microsoft Fluent Emoji (licencia MIT); voces hechas con el modelo abierto Kokoro y eSpeak NG; lugares cercanos © colaboradores de OpenStreetMap.')}</p>
     </details></div>`;
   bindLang(R.details);
+  $('#shareapp').onclick = shareApp;
   let t; view.querySelectorAll('[data-k]').forEach(inp => inp.oninput = () => { info[inp.dataset.k] = inp.value.trim(); store.set('info', info); clearTimeout(t); t = setTimeout(() => toast(L('Saved', 'Guardado')), 600); });
 };
 
@@ -578,6 +580,13 @@ function shareLink() {
   const i = Object.assign({}, info); if (Array.isArray(i.extra)) i.extra = i.extra.filter(x => x.n || x.p);
   const data = b64e(JSON.stringify({ v: 1, h, i, l: lang }));
   return location.href.split('#')[0] + '#import/' + data;
+}
+const APP_URL = () => location.href.split('#')[0];
+function shareApp() {
+  const msg = L("Try Huddle Ready, a free app for power outages. No account, nothing to pay, and it works with no internet. Open the link, answer 5 quick questions, then add it to your home screen:", 'Prueba Huddle Ready, una app gratis para cuando se va la luz. No necesitas cuenta, no cuesta nada y funciona sin internet. Abre el enlace, contesta 5 preguntas rápidas y agrégala a tu pantalla de inicio:');
+  const url = APP_URL();
+  const copy = () => { try { navigator.clipboard.writeText(msg + '\n' + url).then(() => toast(L('Link copied', 'Enlace copiado')), () => prompt('', url)); } catch (e) { prompt('', url); } };
+  if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg, url }).catch(() => {}); else copy();
 }
 R.share = () => {
   const url = shareLink();

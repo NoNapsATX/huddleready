@@ -545,18 +545,26 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 /* kids: shadow animals */
 .wall{--x:50%;--y:45%;position:relative;height:340px;border-radius:32px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;
   background:radial-gradient(circle at var(--x) var(--y),#fff6d2 0,#f3d98e 34%,#9b7f45 66%,#3a2f1c 100%);display:grid;place-items:center}
-.pup{width:86%;height:auto;transform:translate(calc((var(--x) - 50%) * -.12),calc((var(--y) - 45%) * -.08));transition:transform .12s;filter:blur(.6px) drop-shadow(0 0 6px rgba(42,36,64,.35))}
-.pup .hole{fill:#f6e6b0}
+.pup{overflow:visible;width:86%;height:auto;transform:translate(calc((var(--x) - 50%) * -.12),calc((var(--y) - 45%) * -.08));transition:transform .12s;filter:blur(.6px) drop-shadow(0 0 6px rgba(42,36,64,.35))}
+.pup .hole{fill:#f6e6b0}.pup .p{fill:#2a2440}.pup .nail,.pup .crease{display:none}
 .wall-name{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:1.6rem;font-weight:600;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.45)}
-.k-hint{font-family:var(--ui);font-size:1rem;color:#3d3a5a;margin:10px 4px;text-align:center}
+.k-hint{font-family:var(--ui);font-size:1rem;color:#3d3a5a;margin:0;text-align:left;line-height:1.35}
+.k-hint b{display:block;font-family:var(--display);font-size:1.1rem;color:#1d1a3a;margin-bottom:2px}
+.hands-card{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;background:#fff;border-radius:24px;padding:10px 14px 10px 8px;margin:12px 0;box-shadow:0 4px 0 rgba(29,26,58,.08)}
+.hands-pic{width:120px;height:auto;display:block}
+.hands-pic .ol .p{fill:#b67c55;stroke:#b67c55;stroke-width:4;stroke-linejoin:round}
+.hands-pic .ol .nail,.hands-pic .ol .crease,.hands-pic .hole{display:none}
+.hands-pic .fi .p{fill:#f0c19b}
+.hands-pic .nail{fill:#f8dcc6;stroke:#d9a47b;stroke-width:1}
+.hands-pic .crease{fill:none;stroke:#c98f65;stroke-width:1.4;stroke-linecap:round}
 .pup .a1,.pup .a2{transform-box:view-box}
 .p-bunny.go .a1{animation:wig .35s ease-in-out 4 alternate}.p-bunny.go .a2{animation:wig2 .35s ease-in-out 4 alternate}
 .p-dog.go .a1{animation:jaw .22s ease-in-out 6 alternate}.p-dog.go .a2{animation:wig .4s ease-in-out 2 alternate}
 .p-bird.go .a1{animation:flapL .28s ease-in-out 8 alternate}.p-bird.go .a2{animation:flapR .28s ease-in-out 8 alternate}
-.p-crab.go .a1{animation:legs .18s ease-in-out 10 alternate}.p-crab.go{animation:side 1.8s ease-in-out}
+.p-swan.go .a1{animation:beak .25s ease-in-out 6 alternate}.p-swan.go{animation:bob 1.6s ease-in-out}
 @keyframes wig{to{transform:rotate(-12deg)}}@keyframes wig2{to{transform:rotate(12deg)}}@keyframes jaw{to{transform:rotate(9deg)}}
 @keyframes flapL{to{transform:rotate(22deg)}}@keyframes flapR{to{transform:rotate(-22deg)}}@keyframes legs{to{transform:scaleX(1.08) translateY(3px)}}
-@keyframes side{25%{translate:-16px 0}75%{translate:16px 0}}
+@keyframes beak{to{transform:rotate(14deg)}}@keyframes bob{30%{rotate:-4deg}70%{rotate:3deg}}
 /* kids: breathing */
 .bal-wrap{height:250px;display:grid;place-items:center}
 .bal{--s:.5;transform:scale(var(--s));transform-origin:50% 70%}

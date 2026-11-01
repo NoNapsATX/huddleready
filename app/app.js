@@ -163,11 +163,13 @@ const outTime = () => store.get('outTime', null);
 
 /* ---------- router ---------- */
 const R = {};
+let danceStop = null;
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [name, ...rest] = h.split('/');
   clearInterval(route.tick); if (name !== 'calls') callEdit = false;
   document.documentElement.classList.toggle('night', !!outage());
+  if (danceStop && !(name === 'kids' && rest[0] === 'dance')) danceStop();
   if (name === 'kids') { const tb = $('#tabbar'); if (tb) tb.hidden = true; kids.hidden = false; document.body.style.overflow = 'hidden'; (K[rest[0] || 'home'] || K.home)(rest.slice(1)); return; }
   kids.hidden = true; document.body.style.overflow = ''; try { voice.pause(); } catch (e) {}
   if (!home && name !== 'setup' && name !== 'import') { location.replace('#setup'); return; }
@@ -933,6 +935,9 @@ K.home = () => {
       <button class="k-tile c2" data-k="hunt"><img src="${im('flashlight')}" alt="">${L('Flashlight', 'Linterna')}</button>
       <button class="k-tile c3" data-k="safe"><img src="${im('check')}" alt="">${L('Safe?', '¿Seguro?')}</button>
       <button class="k-tile c4" data-k="pack"><img src="${im('backpack')}" alt="">${L('My bag', 'Mi mochila')}</button>
+      <button class="k-tile c6" data-k="shadow"><img src="${im('rabbit')}" alt="">${L('Shadows', 'Sombras')}</button>
+      <button class="k-tile c7" data-k="breathe"><img src="${im('balloon')}" alt="">${L('Breathe', 'Respira')}</button>
+      <button class="k-tile c8 wide" data-k="dance"><img src="${im('disco')}" alt="" style="width:64px;height:64px"><span>${L('Freeze dance', 'Baila y congélate')}</span></button>
       <button class="k-tile c5 wide" data-k="phone"><img src="${im('telephone')}" alt="" style="width:64px;height:64px"><span>${L('Our phone number', 'Nuestro teléfono')}</span></button>
     </div>`;
   const h = $('#hold'); let t;
@@ -1041,6 +1046,70 @@ K.pack = () => {
     $('#again').onclick = () => { packed = new Set(); draw(); };
   }
   draw(); say('pack_intro');
+};
+
+/* shadow puppets: a lit wall that follows your finger; tap the shadow to make it move */
+const PUP = () => [['bunny', L('Bunny', 'Conejo'), L('Make a fist. Hold up two fingers for ears.', 'Haz un puño. Levanta dos dedos para las orejas.')],
+  ['dog', L('Doggy', 'Perrito'), L('Flat hand. Thumb up for an ear, drop your pinky for the mouth.', 'Mano plana. Pulgar arriba para la oreja, baja el meñique para la boca.')],
+  ['bird', L('Bird', 'Pájaro'), L('Cross your wrists, hook your thumbs, flap your fingers.', 'Cruza las muñecas, engancha los pulgares, mueve los dedos.')],
+  ['crab', L('Crab', 'Cangrejo'), L('Hands side by side, thumbs up for claws, walk your fingers.', 'Manos juntas, pulgares arriba como tenazas, camina con los dedos.')]];
+let pupI = 0;
+K.shadow = () => {
+  const P = PUP(), [k, name, how] = P[pupI];
+  kview.innerHTML = `${kbar(L('Shadow animals', 'Animales de sombra'))}
+    <div class="wall" id="wall"><svg viewBox="0 0 200 170" class="pup p-${k}" id="pup" role="img" aria-label="${name}"><g fill="#2a2440">${window.PUPPETS[k]}</g></svg><div class="wall-name">${name}</div></div>
+    <p class="k-hint">${L('Grown-ups', 'Adultos')}: ${how}</p>
+    <div class="k-nav"><button class="k-btn soft" id="pb">${L('Back', 'Atrás')}</button><button class="k-btn" id="pn">${L('Next', 'Sigue')}</button></div>`;
+  const wall = $('#wall'), pup = $('#pup');
+  const light = e => { const r = wall.getBoundingClientRect(); wall.style.setProperty('--x', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%'); wall.style.setProperty('--y', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%'); };
+  wall.addEventListener('pointermove', light); wall.addEventListener('pointerdown', e => { light(e); pup.classList.remove('go'); void pup.offsetWidth; pup.classList.add('go'); say('shadow_' + k); });
+  $('#pn').onclick = () => { pupI = (pupI + 1) % P.length; K.shadow(); say('shadow_' + P[pupI][0]); };
+  $('#pb').onclick = () => { pupI = (pupI + P.length - 1) % P.length; K.shadow(); say('shadow_' + P[pupI][0]); };
+  if (!K.shadow.greeted) { K.shadow.greeted = true; say('shadow_intro', 'shadow_' + k); }
+};
+
+/* brave breathing: the balloon fills as you breathe in and shrinks as you blow out */
+K.breathe = () => {
+  const N = 5, IN = 4000, OUT = 5000; let n = 0, phase = 'ready', t0 = 0, raf;
+  kview.innerHTML = `${kbar(L('Brave breathing', 'Respira valiente'))}<div class="k-card breathe"><div class="bal-wrap"><div class="bal" id="bal"><img src="${im('balloon')}" alt=""></div></div>
+    <p class="k-text" id="bt">${L('Watch the balloon', 'Mira el globo')}</p><div class="k-stars" id="bs">${Array.from({ length: N }, () => `<img src="${im('star')}" alt="">`).join('')}</div>
+    <button class="k-btn" id="bgo" style="width:100%">${L('Start', 'Empezar')}</button></div>`;
+  const bal = $('#bal'), bt = $('#bt'), go_ = $('#bgo');
+  const stars = () => kview.querySelectorAll('#bs img').forEach((s, i) => s.classList.toggle('lit', i < n));
+  function frame(now) {
+    if (!bal.isConnected) return;
+    const e = now - t0;
+    if (phase === 'in') { const p = Math.min(e / IN, 1); bal.style.setProperty('--s', (.5 + .5 * (1 - Math.cos(Math.PI * p)) / 2).toFixed(3)); if (p >= 1) { phase = 'out'; t0 = now; bt.textContent = L('Blow out…', 'Sopla…'); say('breathe_out'); } }
+    else if (phase === 'out') { const p = Math.min(e / OUT, 1); bal.style.setProperty('--s', (1 - .5 * (1 - Math.cos(Math.PI * p)) / 2).toFixed(3)); if (p >= 1) { n++; stars(); if (n >= N) { phase = 'done'; bt.textContent = L('Great breathing! Calm and brave.', '¡Muy bien! Tranquilo y valiente.'); go_.hidden = false; go_.textContent = L('Again', 'Otra vez'); say('breathe_done'); return; } phase = 'in'; t0 = now; bt.textContent = L('Breathe in…', 'Toma aire…'); say('breathe_in'); } }
+    raf = requestAnimationFrame(frame);
+  }
+  go_.onclick = () => { n = 0; stars(); go_.hidden = true; phase = 'in'; t0 = performance.now(); bt.textContent = L('Breathe in…', 'Toma aire…'); say('breathe_in'); raf = requestAnimationFrame(frame); };
+  say('breathe_intro');
+};
+
+/* freeze dance: music made on the phone (no files); it stops at random and everyone freezes */
+K.dance = () => {
+  if (danceStop) danceStop();
+  kview.innerHTML = `${kbar(L('Freeze dance', 'Baila y congélate'))}<div class="k-card dance" id="dc"><div class="dancers" id="dz"><img src="${im('teddy')}" alt=""><img src="${im('disco')}" alt="" class="ball"><img src="${im('rabbit')}" alt=""></div>
+    <p class="k-text" id="dt">${L('Dance when the music plays. When it stops, freeze!', 'Baila cuando suene la música. ¡Cuando pare, congélate!')}</p>
+    <div class="k-say" id="dr"></div><button class="k-btn" id="dgo" style="width:100%">${ic('play')}${L('Start the music', 'Poner la música')}</button></div>`;
+  const dc = $('#dc'), dt = $('#dt'), dr = $('#dr'), btn = $('#dgo');
+  let ac = null, master, playing = false, frozen = false, nextT = 0, beat = 0, timer, sched, rounds = 0;
+  const NOTES = [523.25, 587.33, 659.25, 783.99, 880, 1046.5], BASS = [130.81, 174.61, 196, 130.81];
+  function tone(f, t, d, type, vol) { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g); g.connect(master); o.start(t); o.stop(t + d + .02); }
+  function tick() { const b = ac.createBufferSource(), buf = ac.createBuffer(1, ac.sampleRate * .03, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length); b.buffer = buf; const g = ac.createGain(); g.gain.value = .12; b.connect(g); g.connect(master); return b; }
+  function schedule() { const spb = .25; while (nextT < ac.currentTime + .2) { if (beat % 2 === 0) tone(BASS[(beat >> 3) % 4], nextT, .22, 'triangle', .35); if (Math.random() < .8) tone(NOTES[Math.floor(Math.random() * NOTES.length)], nextT, .18, 'square', .06); const h = tick(); h.start(nextT); nextT += spb; beat++; } }
+  function music(on) { if (on) { master.gain.cancelScheduledValues(ac.currentTime); master.gain.setTargetAtTime(.9, ac.currentTime, .05); nextT = ac.currentTime + .05; sched = setInterval(schedule, 60); } else { clearInterval(sched); master.gain.setTargetAtTime(0, ac.currentTime, .03); } }
+  function dance() { if (!dc.isConnected) return stop(); frozen = false; dc.classList.remove('frozen'); dc.classList.add('moving'); dt.textContent = L('Dance!', '¡A bailar!'); music(true); timer = setTimeout(freeze, 4000 + Math.random() * 6000); }
+  function freeze() { if (!dc.isConnected) return stop(); frozen = true; music(false); dc.classList.remove('moving'); dc.classList.add('frozen'); dt.textContent = L('FREEZE!', '¡CONGELADOS!'); say('dance_freeze'); rounds++; dr.textContent = '⭐'.repeat(Math.min(rounds, 10)); timer = setTimeout(() => { say('dance_go'); dance(); }, 3000 + Math.random() * 1500); }
+  function stop() { clearTimeout(timer); clearInterval(sched); try { if (ac) ac.close(); } catch (e) {} ac = null; playing = false; danceStop = null; if (dc.isConnected) { dc.classList.remove('moving', 'frozen'); btn.innerHTML = ic('play') + L('Start the music', 'Poner la música'); } }
+  btn.onclick = () => {
+    if (playing) return stop();
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { dt.textContent = L('Music is not available on this phone.', 'La música no funciona en este teléfono.'); return; }
+    master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination); playing = true; danceStop = stop; rounds = 0; dr.textContent = '';
+    btn.innerHTML = ic('pause') + L('Stop', 'Parar'); dance();
+  };
+  say('dance_intro');
 };
 
 /* phone number */

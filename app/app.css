@@ -214,7 +214,7 @@ mark{background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:
 .k-tile img{width:84px;height:84px}
 .k-tile:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(29,26,58,.12)}
 .k-tile.wide{grid-column:1/-1;grid-template-columns:auto 1fr;justify-items:start;align-items:center;padding:14px 20px}
-.c1{background:#ffe08a}.c2{background:#ffc7d4}.c3{background:#b9f0cf}.c4{background:#c9d8ff}.c5{background:#ffd0a8}
+.c6{background:#e3d4ff}.c7{background:#c8f1ff}.c8{background:#ffd6f2}.c1{background:#ffe08a}.c2{background:#ffc7d4}.c3{background:#b9f0cf}.c4{background:#c9d8ff}.c5{background:#ffd0a8}
 .k-card{background:#fff;border-radius:32px;padding:22px;display:grid;gap:16px;justify-items:center;text-align:center;box-shadow:0 6px 0 rgba(29,26,58,.08)}
 .k-pic{width:190px;height:190px;border-radius:50%;display:grid;place-items:center}
 .k-pic img{width:120px;height:120px}
@@ -542,3 +542,35 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 .kstep{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-weight:800}
 .kstep.on{background:var(--t-blue);border-color:var(--t-blue);color:#fff}
 .kscrub{width:100%;accent-color:var(--t-blue);margin:0 0 2px}
+/* kids: shadow animals */
+.wall{--x:50%;--y:45%;position:relative;height:340px;border-radius:32px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(circle at var(--x) var(--y),#fff6d2 0,#f3d98e 34%,#9b7f45 66%,#3a2f1c 100%);display:grid;place-items:center}
+.pup{width:86%;height:auto;transform:translate(calc((var(--x) - 50%) * -.12),calc((var(--y) - 45%) * -.08));transition:transform .12s;filter:blur(.6px) drop-shadow(0 0 6px rgba(42,36,64,.35))}
+.pup .hole{fill:#f6e6b0}
+.wall-name{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:1.6rem;font-weight:600;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.45)}
+.k-hint{font-family:var(--ui);font-size:1rem;color:#3d3a5a;margin:10px 4px;text-align:center}
+.pup .a1,.pup .a2{transform-box:view-box}
+.p-bunny.go .a1{animation:wig .35s ease-in-out 4 alternate}.p-bunny.go .a2{animation:wig2 .35s ease-in-out 4 alternate}
+.p-dog.go .a1{animation:jaw .22s ease-in-out 6 alternate}.p-dog.go .a2{animation:wig .4s ease-in-out 2 alternate}
+.p-bird.go .a1{animation:flapL .28s ease-in-out 8 alternate}.p-bird.go .a2{animation:flapR .28s ease-in-out 8 alternate}
+.p-crab.go .a1{animation:legs .18s ease-in-out 10 alternate}.p-crab.go{animation:side 1.8s ease-in-out}
+@keyframes wig{to{transform:rotate(-12deg)}}@keyframes wig2{to{transform:rotate(12deg)}}@keyframes jaw{to{transform:rotate(9deg)}}
+@keyframes flapL{to{transform:rotate(22deg)}}@keyframes flapR{to{transform:rotate(-22deg)}}@keyframes legs{to{transform:scaleX(1.08) translateY(3px)}}
+@keyframes side{25%{translate:-16px 0}75%{translate:16px 0}}
+/* kids: breathing */
+.bal-wrap{height:250px;display:grid;place-items:center}
+.bal{--s:.5;transform:scale(var(--s));transform-origin:50% 70%}
+.bal img{width:230px;height:230px;display:block}
+/* kids: freeze dance */
+.dancers{display:flex;justify-content:center;align-items:flex-end;gap:14px;height:170px}
+.dancers img{width:96px;height:96px}
+.dancers .ball{width:80px;height:80px;align-self:flex-start}
+.dance.moving .dancers img:not(.ball){animation:bop .5s ease-in-out infinite alternate}
+.dance.moving .dancers img:nth-child(3){animation-delay:.25s}
+.dance.moving .ball{animation:spin 1.2s linear infinite}
+.dance.frozen{background:#e3f4ff;box-shadow:0 6px 0 #9cc8ec}
+.dance.frozen .dancers img{filter:hue-rotate(170deg) saturate(.6) brightness(1.1)}
+.dance.frozen #dt{color:#1866b4;font-weight:700;font-size:2.2rem}
+@keyframes bop{from{transform:translateY(0) rotate(-8deg)}to{transform:translateY(-22px) rotate(8deg)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.dance.moving .dancers img,.pup .a1,.pup .a2{animation:none!important}}

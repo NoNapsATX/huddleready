@@ -525,7 +525,7 @@ function skillGroup(cat) {
   const c = skillCat(cat); if (!c) return go('skills');
   const S = (window.SKILLS || []).filter(x => x.cat === cat);
   view.innerHTML = `<div class="screen"><header class="bar"><button class="back" data-back="skills" aria-label="${L('Back to skills', 'Volver a habilidades')}">${ic('arrow-left')}</button><h1>${T(c[2])}</h1></header>
-    <div class="list">${S.map(x => `<button class="row" data-go="skills/${x.id}"><span class="qa-ic sm t-${c[3]}">${ic(x.icon)}</span><div class="grow"><b>${T(x.title)}</b>${x.figs ? `<small>${ic('image')} ${L('with drawings', 'con dibujos')}</small>` : ''}</div>${ic('chevron-right', 'chev')}</button>`).join('')}</div></div>`;
+    <div class="list">${S.map(x => `<button class="row" data-go="skills/${x.id}"><span class="qa-ic sm t-${c[3]}">${ic(x.icon)}</span><div class="grow"><b>${T(x.title)}</b>${window.KNOT_ANIM && window.KNOT_ANIM[x.id] ? `<small>${ic('clapperboard')} ${L('animated', 'animado')}</small>` : x.figs ? `<small>${ic('image')} ${L('with drawings', 'con dibujos')}</small>` : ''}</div>${ic('chevron-right', 'chev')}</button>`).join('')}</div></div>`;
 }
 function skill(id) {
   const A = window.SKILLS || [], x = A.find(y => y.id === id); if (!x) return go('skills');
@@ -534,6 +534,7 @@ function skill(id) {
   const figs = x.figs || {};
   view.innerHTML = `<div class="screen"><header class="bar"><button class="back" data-back="skills/c-${x.cat}" aria-label="${L('Back', 'Volver')}">${ic('arrow-left')}</button><h1>${T(x.title)}</h1></header>
     <div class="skill-when t-${cat[3]}"><span class="qa-ic">${ic(x.icon)}</span><div><small>${L('When', 'Cuándo')}</small><p>${T(x.when)}</p></div></div>
+    ${x.cat === 'knots' && window.KNOT_ANIM && window.KNOT_ANIM[x.id] ? knotPlayerHTML(window.KNOT_ANIM[x.id]) : ''}
     ${x.cat === 'aid' ? `<a class="call wide911" href="tel:911">${ic('siren')}<div><b>${L('Call 911', 'Llama al 911')}</b><small>${L('Call first, or have someone call while you help', 'Llama primero, o que alguien llame mientras ayudas')}</small></div></a>` : ''}
     <ol class="steps-big">${x.steps.map((st, k) => `<li>${T(st)}${figs[k] ? fig(figs[k]) : ''}</li>`).join('')}</ol>
     ${x.dont && x.dont.length ? `<div class="dont">${ic('triangle-alert')}<div>${x.dont.map(d => `<p>${T(d)}</p>`).join('')}</div></div>` : ''}
@@ -541,6 +542,78 @@ function skill(id) {
     <p class="muted small" style="padding:0 4px">${L('Source', 'Fuente')}: ${esc(x.src)}</p>
     ${nx ? `<button class="list row" data-go="skills/${nx.id}"><div class="grow"><small>${L('Next', 'Siguiente')}</small><b>${T(nx.title)}</b></div>${ic('chevron-right', 'chev')}</button>`
          : `<button class="list row" data-go="skills"><div class="grow"><small>${L('Done with', 'Terminaste')} ${T(cat[2])}</small><b>${L('See all skills', 'Ver todas las habilidades')}</b></div>${ic('chevron-right', 'chev')}</button>`}</div>`;
+  if ($('#knot')) knotPlayer(window.KNOT_ANIM[x.id], $('#knot'));
+}
+
+/* ---------- knot animation: the working end traces the knot, step by step ---------- */
+function knotPlayerHTML(K) {
+  return `<section class="knot" id="knot" aria-label="${L('Knot animation', 'Animación del nudo')}">
+    <svg class="kstage" viewBox="0 0 320 230" aria-hidden="true"></svg>
+    <p class="kcap" aria-live="polite"></p>
+    <div class="kctl"><button class="kbtn kplay" aria-label="${L('Play', 'Reproducir')}">${ic('play')}</button>
+      <div class="ksteps">${K.steps.map((s, i) => `<button class="kstep" data-k="${i}" aria-label="${L('Step', 'Paso')} ${i + 1}">${i + 1}</button>`).join('')}</div>
+      <button class="kbtn kslow" aria-pressed="false" aria-label="${L('Slow motion', 'Cámara lenta')}">${ic('turtle')}</button></div>
+    <input class="kscrub" type="range" min="0" max="1000" value="0" aria-label="${L('Scrub through the knot', 'Recorrer el nudo')}">
+  </section>`;
+}
+function knotPlayer(K, root) {
+  const NS = 'http://www.w3.org/2000/svg', svg = root.querySelector('.kstage'), cap = root.querySelector('.kcap');
+  const playB = root.querySelector('.kplay'), slowB = root.querySelector('.kslow'), scrub = root.querySelector('.kscrub'), chips = [...root.querySelectorAll('.kstep')];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let geoI = -1, pieces = [], tip = null, step = 0, p = 0, playing = false, slow = false, stopAt = null, hold = 0, last = 0;
+  const n = K.steps.length;
+  function build(gi) {
+    const g = K.geos[gi]; geoI = gi; pieces = []; svg.innerHTML = '';
+    svg.setAttribute('viewBox', `0 0 ${g.w} ${g.h}`);
+    const bg = document.createElementNS(NS, 'rect'); bg.setAttribute('width', g.w); bg.setAttribute('height', g.h); bg.setAttribute('rx', 14); bg.setAttribute('fill', '#f6f8fc'); svg.appendChild(bg);
+    for (const it of g.layers) {
+      if (it.o) { const t = document.createElementNS(NS, 'g'); t.innerHTML = it.o; svg.appendChild(t); continue; }
+      const R = g.ropes[it.r], gr = document.createElementNS(NS, 'g'), len = Math.max(it.b - it.a, 1);
+      gr.setAttribute('fill', 'none');
+      const mk = (d, col, w, op) => { const e = document.createElementNS(NS, 'path'); e.setAttribute('d', d); e.setAttribute('stroke', col); e.setAttribute('stroke-width', w); e.setAttribute('pathLength', len); e.setAttribute('stroke-linejoin', 'round'); if (op) e.setAttribute('stroke-opacity', op); gr.appendChild(e); return e; };
+      const ps = [mk(it.c, R.case, R.W + 3.4), mk(it.f, R.fill, R.W), mk(it.f, R.hi, (R.W * .22).toFixed(1), '.55')];
+      svg.appendChild(gr); pieces.push({ it, gr, ps, len });
+    }
+    tip = document.createElementNS(NS, 'circle'); svg.appendChild(tip);
+  }
+  function draw() {
+    const s = K.steps[step];
+    if (s.g !== geoI) build(s.g);
+    const g = K.geos[s.g], e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2, t = s.from + (s.to - s.from) * e;
+    let host = null;
+    for (const pc of pieces) {
+      const { it, ps, len, gr } = pc;
+      if (it.r !== s.r) { gr.style.display = ''; ps.forEach(x => x.removeAttribute('stroke-dasharray')); continue; }
+      const v = t - it.a;
+      if (v <= 0.01) { gr.style.display = 'none'; continue; }
+      gr.style.display = '';
+      if (v >= len) ps.forEach(x => x.removeAttribute('stroke-dasharray'));
+      else { ps.forEach(x => x.setAttribute('stroke-dasharray', `${v.toFixed(2)} ${len + 2}`)); }
+      if (it.a <= t && t <= it.b + .01) host = gr;
+    }
+    const R = g.ropes[s.r], P = R.pts, i = Math.min(Math.floor(t), P.length - 1), f = t - i, q = P[Math.min(i + 1, P.length - 1)];
+    tip.setAttribute('cx', P[i][0] + (q[0] - P[i][0]) * f); tip.setAttribute('cy', P[i][1] + (q[1] - P[i][1]) * f);
+    tip.setAttribute('r', (R.W + 3.4) / 2); tip.setAttribute('fill', R.case);
+    if (host && host.nextSibling !== tip) svg.insertBefore(tip, host.nextSibling);
+    cap.innerHTML = `<b>${L('Step', 'Paso')} ${step + 1} ${L('of', 'de')} ${n}</b> ${T(s.cap)}`;
+    chips.forEach((c, k) => c.classList.toggle('on', k === step));
+    scrub.value = Math.round((step + p) / n * 1000);
+  }
+  function setPlaying(v) { playing = v; playB.innerHTML = ic(v ? 'pause' : (step === n - 1 && p >= 1 ? 'rotate-ccw' : 'play')); playB.setAttribute('aria-label', v ? L('Pause', 'Pausa') : L('Play', 'Reproducir')); if (v) { last = performance.now(); requestAnimationFrame(tick); } }
+  function tick(now) {
+    if (!playing || !root.isConnected) return;
+    const dt = now - last; last = now;
+    if (hold > 0) { hold -= dt; if (hold <= 0) { if (step < n - 1) { step++; p = 0; } } draw(); return requestAnimationFrame(tick); }
+    p += dt / (slow ? 5200 : 2600);
+    if (p >= 1) { p = 1; draw(); if (stopAt === step || step === n - 1) { stopAt = null; setPlaying(false); return; } hold = slow ? 1100 : 750; }
+    draw(); requestAnimationFrame(tick);
+  }
+  playB.onclick = () => { if (playing) return setPlaying(false); if (step === n - 1 && p >= 1) { step = 0; p = 0; } stopAt = null; setPlaying(true); };
+  slowB.onclick = () => { slow = !slow; slowB.setAttribute('aria-pressed', slow); slowB.classList.toggle('on', slow); };
+  chips.forEach((c, k) => c.onclick = () => { step = k; p = 0; hold = 0; stopAt = k; draw(); setPlaying(true); });
+  scrub.oninput = () => { setPlaying(false); const v = scrub.value / 1000 * n; step = Math.min(Math.floor(v), n - 1); p = Math.min(v - step, 1); hold = 0; draw(); };
+  // start: show the knot finished for reduced motion, otherwise play from the beginning
+  if (reduce) { step = n - 1; p = 1; draw(); setPlaying(false); } else { draw(); setTimeout(() => root.isConnected && setPlaying(true), 400); }
 }
 
 /* ---------- plan ---------- */

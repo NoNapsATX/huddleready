@@ -1052,13 +1052,13 @@ K.pack = () => {
 const PUP = () => [['bunny', L('Bunny', 'Conejo'), L('Make a fist. Hold up two fingers for ears.', 'Haz un puño. Levanta dos dedos para las orejas.')],
   ['dog', L('Doggy', 'Perrito'), L('Flat hand. Thumb up for an ear, drop your pinky for the mouth.', 'Mano plana. Pulgar arriba para la oreja, baja el meñique para la boca.')],
   ['bird', L('Bird', 'Pájaro'), L('Cross your wrists, hook your thumbs, flap your fingers.', 'Cruza las muñecas, engancha los pulgares, mueve los dedos.')],
-  ['swan', L('Swan', 'Cisne'), L('Arm up, hand bent down, fingers together. Open your thumb for the beak.', 'Brazo arriba, mano doblada hacia abajo, dedos juntos. Abre el pulgar para el pico.')]];
+  ['swan', L('Swan', 'Cisne'), L('Arm up, bend your hand down, pinch your fingers together for the beak.', 'Brazo arriba, dobla la mano hacia abajo y junta los dedos para el pico.')]];
 let pupI = 0;
 K.shadow = () => {
   const P = PUP(), [k, name, how] = P[pupI];
   kview.innerHTML = `${kbar(L('Shadow animals', 'Animales de sombra'))}
-    <div class="wall" id="wall"><svg viewBox="0 0 200 170" class="pup p-${k}" id="pup" role="img" aria-label="${name}"><g fill="#2a2440">${window.PUPPETS[k]}</g></svg><div class="wall-name">${name}</div></div>
-    <div class="hands-card"><svg viewBox="0 0 200 170" class="hands-pic" aria-hidden="true"><g class="ol">${window.PUPPETS[k]}</g><g class="fi">${window.PUPPETS[k]}</g></svg><p class="k-hint"><b>${L('Your hands', 'Tus manos')}</b>${how}</p></div>
+    <div class="wall" id="wall"><div class="pup p-${k}" id="pup" role="img" aria-label="${name}">${pupSVG(k, 'shadow', 'img/')}</div><div class="wall-name">${name}</div></div>
+    <div class="hands-card"><div class="hands-pic" aria-hidden="true">${pupSVG(k, 'hands', 'img/')}</div><p class="k-hint"><b>${L('Your hands', 'Tus manos')}</b>${how}</p></div>
     <div class="k-nav"><button class="k-btn soft" id="pb">${L('Back', 'Atrás')}</button><button class="k-btn" id="pn">${L('Next', 'Sigue')}</button></div>`;
   const wall = $('#wall'), pup = $('#pup');
   const light = e => { const r = wall.getBoundingClientRect(); wall.style.setProperty('--x', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%'); wall.style.setProperty('--y', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%'); };

@@ -255,7 +255,7 @@ R.home = () => {
       <div class="sec-h">${L('At a glance', 'De un vistazo')}</div>
       <div class="stats">${stat('supplies/pantry', 'utensils', 'green', hasPantry ? d1(ps.days) + L(' days', ' días') : L('Add', 'Agregar'), L('of food', 'de comida'))}${stat('supplies/pantry', 'droplets', 'blue', d1(ps.waterDays) + L(' days', ' días'), L('of water', 'de agua'))}${stat('calls', 'phone', 'amber', nContacts || L('Add', 'Agregar'), L('our contacts', 'contactos'))}</div>
       <div class="sec-h">${L('Get ready', 'Prepárense')}</div>
-      <div class="grid2">${tile('supplies/pantry', 'package', L('Supplies & pantry', 'Provisiones y despensa'), 'green', L('What you have', 'Lo que tienen'))}${tile('skills', 'book-open', L('Skills & how-tos', 'Habilidades y guías'), 'blue', L('With pictures', 'Con dibujos'))}${tile('drill', 'timer', L('Practice drill', 'Simulacro'), 'amber', L('5 minutes', '5 minutos'))}${tile('share', 'users', L('Family', 'Familia'), 'red', syncOn ? L('Synced', 'Sincronizado') : L('Share and sync', 'Compartir y sincronizar'))}</div>
+      <div class="grid2">${tile('supplies/pantry', 'package', L('Supplies & pantry', 'Provisiones y despensa'), 'green', L('What you have', 'Lo que tienen'))}${tile('skills', 'book-open', L('Skills & how-tos', 'Habilidades y guías'), 'blue', L('With pictures', 'Con dibujos'))}${tile('drill', 'timer', L('Practice drill', 'Simulacro'), 'amber', L('5 minutes', '5 minutos'))}${tile('calls', 'users', L('Contacts', 'Contactos'), 'red', syncOn ? L('Synced with family', 'Sincronizado') : L('Calls, share, sync', 'Llamadas, compartir'))}</div>
       ${installCardHTML()}`;
   }
   view.innerHTML = `<div class="screen home">${top}${body}
@@ -327,7 +327,7 @@ function tabbar(name) {
   const tabs = [['', 'house', L('Home', 'Inicio'), ['', 'home', 'ready', 'find', 'stay', 'notes', 'near', 'check', 'sheet', 'install']],
     ['supplies', 'package', L('Supplies', 'Provisiones'), ['supplies', 'pantrylist', 'food']],
     ['plan', 'book-open', L('Guides', 'Guías'), ['plan', 'skills']],
-    ['calls', 'users', L('Family', 'Familia'), ['calls', 'share', 'details', 'import']],
+    ['calls', 'users', L('Contacts', 'Contactos'), ['calls', 'share', 'details', 'import']],
     ...(hasKids() ? [['kids', 'baby', L('Kids', 'Niños'), ['kids']]] : [])];
   tb.style.gridTemplateColumns = `repeat(${tabs.length},1fr)`;
   tb.innerHTML = tabs.map(([g, i, t, on]) => `<button data-tab="${g}" aria-current="${on.includes(name || '') ? 'page' : 'false'}"><span class="tb-ic">${ic(i)}</span><span>${t}</span></button>`).join('');
@@ -555,7 +555,7 @@ R.calls = () => {
 
 /* ---------- skills: how-to guides ---------- */
 const T = pair => lang === 'es' ? pair[1] : pair[0];
-const famSeg = cur => `<div class="seg" role="group" aria-label="${L('Family', 'Familia')}"><button aria-pressed="${cur === 'calls'}" data-go="calls">${L('Call list', 'Teléfonos')}</button><button aria-pressed="${cur === 'share'}" data-go="share">${L('Share', 'Compartir')}</button><button aria-pressed="${cur === 'details'}" data-go="details">${L('Our info', 'Nuestra info')}</button></div>`;
+const famSeg = cur => `<div class="seg" role="group" aria-label="${L('Contacts', 'Contactos')}"><button aria-pressed="${cur === 'calls'}" data-go="calls">${L('Call list', 'Teléfonos')}</button><button aria-pressed="${cur === 'share'}" data-go="share">${L('Share', 'Compartir')}</button><button aria-pressed="${cur === 'details'}" data-go="details">${L('Our info', 'Nuestra info')}</button></div>`;
 const guideSeg = cur => `<div class="seg" role="group" aria-label="${L('Guides', 'Guías')}"><button aria-pressed="${cur === 'plan'}" data-go="plan">${L('Our plan', 'Nuestro plan')}</button><button aria-pressed="${cur === 'skills'}" data-go="skills">${L('Skills', 'Habilidades')}</button></div>`;
 const COVER = { aid: 'cpr', fire: 'firelay', knots: 'bowline-4', home: 'lantern', living: 'foodorder' };
 const fig = (n, cls = 'fig') => `<img class="${cls}" src="img/skills/${n}${lang === 'es' ? '-es' : ''}.svg" alt="" loading="lazy" decoding="async">`;

@@ -163,11 +163,12 @@ const outTime = () => store.get('outTime', null);
 
 /* ---------- router ---------- */
 const R = {};
-let danceStop = null, bedStop = null;
+let danceStop = null, bedStop = null, pageStop = null;
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [name, ...rest] = h.split('/');
   clearInterval(route.tick); if (name !== 'calls') callEdit = false;
+  if (pageStop) { const f = pageStop; pageStop = null; try { f(); } catch (e) {} }
   document.documentElement.classList.toggle('night', !!outage());
   if (danceStop && !(name === 'kids' && rest[0] === 'dance')) danceStop();
   if (bedStop && !(name === 'kids' && rest[0] === 'bed')) bedStop();
@@ -225,7 +226,9 @@ R.home = () => {
       <div class="row2">${o.done ? `<button class="btn ghost" data-go="stay">${L('Stay or go?', '¿Quedarse o irse?')}</button>` : `<button class="btn" data-go="outage">${L('Continue checklist', 'Seguir la lista')}</button>`}<button class="btn ghost" id="end">${L('Power is back', 'Ya volvió la luz')}</button></div></div>
       <div class="row2"><a class="call" href="tel:911">${ic('siren')}<div><b>911</b><small>${L('Emergency', 'Emergencia')}</small></div></a>${u.phone ? `<a class="call" href="${tel(u.phone)}">${ic('phone')}<div><b>${L('Outage', 'Apagón')}</b><small>${esc(u.phone)}</small></div></a>` : ''}</div>
       ${H().cross ? `<div class="where">${ic('map-pin')}<span>${L('Tell 911: we\'re near', 'Dile al 911: estamos cerca de')} <b>${esc(H().cross)}</b></span></div>` : ''}
+      ${dayCheckHTML(o)}
       <div class="qa-row">${qa('stay', 'door-open', L('Stay or go', 'Quedarse o irse'), 'blue')}${qa('food', 'refrigerator', L('Food clock', 'Reloj de comida'), 'amber')}${qa('skills/c-aid', 'heart-pulse', L('First aid', 'Primeros auxilios'), 'red')}</div>
+      <div class="qa-row">${qa('light', 'lamp-desk', L('Night-light', 'Lamparita'), 'amber')}${qa('notes', 'notebook-pen', L('Notes', 'Notas'), 'blue')}${qa('near', 'locate', L('Help near me', 'Ayuda cerca'), 'green')}</div>
       ${skillStrip(true)}`;
   } else {
     const r = readiness(), pct = Math.round(r.done / r.total * 100);
@@ -243,6 +246,7 @@ R.home = () => {
   view.innerHTML = `<div class="screen home">${top}${body}
     <div class="meet">${ic('map-pin')}<span>${L('Meeting point: home', 'Punto de reunión: casa')}${where ? ' (' + esc(where) + ')' : ''}${info.outside ? L('. Outside spot: ', '. Lugar afuera: ') + esc(info.outside) : ''}</span></div></div>`;
   $('#lang').onclick = () => { setLang(lang === 'es' ? 'en' : 'es'); R.home(); tabbar(''); };
+  if (o) bindDayCheck();
   const sos = $('#sos'); if (sos) sos.onclick = () => { const now = Date.now(); store.set('outage', { start: now, step: 0, done: false }); store.set('outTime', now); go('outage'); };
   const end = $('#end'); if (end) { let armed = false; end.onclick = () => { if (!armed) { armed = true; end.textContent = L('Tap again to confirm', 'Toca otra vez para confirmar'); setTimeout(() => { armed = false; end.textContent = L('Power is back', 'Ya volvió la luz'); }, 3000); return; } store.set('outage', null); document.documentElement.classList.remove('night'); toast(L('Glad it\'s back. Check food before eating.', 'Qué bueno. Revisa la comida antes de comer.')); R.home(); }; }
   route.tick = setInterval(() => { const o = outage(); if (!o) return; const e = $('#elapsed'), f = $('#fridge'); const left = 4 * 3600000 - (Date.now() - (outTime() || o.start)); if (e) e.textContent = fmtDur(Date.now() - o.start); if (f) f.textContent = fridgeLeft(left); }, 30000);
@@ -540,12 +544,17 @@ function skill(id) {
     ${x.cat === 'knots' && window.KNOT_ANIM && window.KNOT_ANIM[x.id] ? knotPlayerHTML(window.KNOT_ANIM[x.id]) : ''}
     ${x.cat === 'aid' ? `<a class="call wide911" href="tel:911">${ic('siren')}<div><b>${L('Call 911', 'Llama al 911')}</b><small>${L('Call first, or have someone call while you help', 'Llama primero, o que alguien llame mientras ayudas')}</small></div></a>` : ''}
     <ol class="steps-big">${x.steps.map((st, k) => `<li>${T(st)}${figs[k] ? fig(figs[k]) : ''}</li>`).join('')}</ol>
+    ${x.id === 'cpr' ? cprBeatHTML() : ''}
     ${x.dont && x.dont.length ? `<div class="dont">${ic('triangle-alert')}<div>${x.dont.map(d => `<p>${T(d)}</p>`).join('')}</div></div>` : ''}
     ${x.tip ? `<div class="tipbox">${ic('lightbulb')}<p>${T(x.tip)}</p></div>` : ''}
     <p class="muted small" style="padding:0 4px">${L('Source', 'Fuente')}: ${esc(x.src)}</p>
+    <button class="btn ghost noprint" id="sprint">${ic('printer')}${L('Print this guide', 'Imprimir esta guía')}</button>
     ${nx ? `<button class="list row" data-go="skills/${nx.id}"><div class="grow"><small>${L('Next', 'Siguiente')}</small><b>${T(nx.title)}</b></div>${ic('chevron-right', 'chev')}</button>`
          : `<button class="list row" data-go="skills"><div class="grow"><small>${L('Done with', 'Terminaste')} ${T(cat[2])}</small><b>${L('See all skills', 'Ver todas las habilidades')}</b></div>${ic('chevron-right', 'chev')}</button>`}</div>`;
   if ($('#knot')) knotPlayer(window.KNOT_ANIM[x.id], $('#knot'));
+  if ($('#beat')) cprBeat();
+  view.querySelectorAll('.steps-big .fig').forEach(img => { img.tabIndex = 0; img.setAttribute('role', 'button'); img.setAttribute('aria-label', L('Show the picture full screen', 'Ver el dibujo en pantalla completa')); img.onclick = () => openPic(img.src); img.onkeydown = e => { if (e.key === 'Enter') openPic(img.src); }; });
+  $('#sprint').onclick = () => window.print();
 }
 
 /* ---------- knot animation: the working end traces the knot, step by step ---------- */
@@ -688,6 +697,9 @@ const SHORTCUTS = () => [
   ['ready', 'circle-check', L('Your readiness', 'Su preparación'), 'ready readiness score progress next step listo preparación puntaje progreso siguiente paso'],
   ['check', 'bell', L('Twice-a-year check', 'Revisión de cada seis meses'), 'check reminder calendar battery batteries alarm smoke expiration twice year revisión recordatorio calendario batería alarma humo caducidad'],
   ['share', 'share-2', L('Share our plan (household only)', 'Compartir nuestro plan (solo la familia de casa)'), 'share send family spouse grandparent link text compartir enviar familia esposa abuelos enlace mensaje'],
+  ['notes', 'notebook-pen', L('Outage notes', 'Notas del apagón'), 'notes log write down restore time radio said boil water notas anotar hora regreso radio aviso hervir'],
+  ['light', 'lamp-desk', L('Night-light', 'Lamparita'), 'night light lamp flashlight screen light red dark sleep lamparita luz noche linterna pantalla roja oscuro'],
+  ['supplies/pantry', 'package', L('Pantry: days of food and water', 'Despensa: días de comida y agua'), 'pantry food cans canned how many days water gallons stock inventory expiration use first despensa comida latas cuántos días agua galones inventario caducidad'],
   ['drill', 'timer', L('Practice drill', 'Simulacro'), 'drill practice test rehearse simulacro práctica ensayo'],
   ['kids', 'baby', L('Kids Mode', 'Modo niños'), 'kids children child game story toddler niños niño juego cuento'],
   ['plan', 'book-open', L('Our plan', 'Nuestro plan'), 'plan guide read medical first aid guía leer médica primeros auxilios'],
@@ -729,7 +741,8 @@ R.find = () => {
 const ESSENTIALS = () => ['water', 'co', 'light', 'bank', 'food', 'firstaid', 'rx', ...(littles() ? ['diapers'] : []), ...(hasKids() ? ['kmed'] : []), ...(H().pets ? ['petfood'] : []), ...(NEED().device ? ['devpower'] : []), ...(NEED().coldmed ? ['cooler'] : [])];
 const calcDefault = () => ({ a: (H().adults || 2), k: H().kids || 0, d: littles() ? 1 : 0, days: 14 });
 let supTab = 'list';
-R.supplies = () => {
+R.supplies = (rest) => {
+  if (rest && rest[0]) supTab = rest[0];
   const ticks = store.get('kit2', {}), KIT = kit();
   const all = KIT.flatMap(([, items]) => items), done = all.filter(([id]) => ticks[id]).length;
   let body;
@@ -751,6 +764,8 @@ R.supplies = () => {
         return `<details class="grp${n === items.length ? ' full' : ''}" data-g="${gi}" ${open === gi ? 'open' : ''}><summary><span class="g-t">${g}</span><span class="g-n">${n === items.length ? ic('circle-check') : ''}${n}/${items.length}</span>${ic('chevron-down', 'g-chev')}</summary><div class="g-body">${sorted.map(row).join('')}</div></details>`;
       }).join('') + `</div>` : '') +
       `<p class="muted small" style="padding:0 4px">${L('Saved on this phone. To-dos like signing up for alerts are in Your readiness on the home screen.', 'Se guarda en este teléfono. Pendientes como inscribirse a las alertas están en Su preparación en la pantalla de inicio.')}</p>`;
+  } else if (supTab === 'pantry') {
+    body = pantryHTML();
   } else {
     const c = Object.assign(calcDefault(), store.get('calc', {})); const p = c.a + c.k;
     const rows = [[L('Drinking water', 'Agua para tomar'), p * c.days + L(' gal', ' gal'), L('1 gallon per person per day', '1 galón por persona al día')], [L('Meals', 'Comidas'), p * c.days * 3, L('3 per person per day', '3 por persona al día')], [L("Kids' snacks", 'Botanas para niños'), c.k * c.days * 2, L('2 a day per child', '2 al día por niño')], [L('Diapers or pull-ups', 'Pañales'), c.d * c.days * 6, L('About 6 a day', 'Unos 6 al día')], [L('Flashlights or headlamps', 'Linternas o lámparas de cabeza'), p, L('1 per person', '1 por persona')], [L('Power banks', 'Baterías portátiles'), Math.max(1, c.a), L('1 per adult', '1 por adulto')], [L('Prescriptions', 'Recetas'), c.days + L(' days', ' días'), L('Each person', 'Cada persona')], [L('Cash', 'Efectivo'), '$' + Math.max(200, p * 50), L('Small bills', 'Billetes chicos')]];
@@ -758,7 +773,8 @@ R.supplies = () => {
     const st = (k, t) => `<div class="stepper" style="padding:10px 16px;border-bottom:1px solid var(--line)"><b style="flex:1">${t}</b><button data-c="${k},-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val" style="font-size:1.3rem">${c[k]}</span><button data-c="${k},1" aria-label="${L('More', 'Más')}">+</button></div>`;
     body = `<div class="list">${st('a', L('Adults', 'Adultos'))}${st('k', L('Children', 'Niños'))}${st('d', L('In diapers', 'Con pañal'))}${st('days', L('Days', 'Días'))}</div><div class="list calc"><table>${rows.map(r => `<tr><td>${r[0]}<small>${r[2]}</small></td><td class="n">${r[1]}</td></tr>`).join('')}</table></div>`;
   }
-  view.innerHTML = `<div class="screen">${bar(L('Supplies', 'Provisiones'))}<div class="seg"><button aria-pressed="${supTab === 'list'}" data-t="list">${L('Checklist', 'Lista')}</button><button aria-pressed="${supTab === 'calc'}" data-t="calc">${L('How much', 'Cuánto')}</button></div>${body}</div>`;
+  view.innerHTML = `<div class="screen">${bar(L('Supplies', 'Provisiones'))}<div class="seg"><button aria-pressed="${supTab === 'list'}" data-t="list">${L('Checklist', 'Lista')}</button><button aria-pressed="${supTab === 'pantry'}" data-t="pantry">${L('Pantry', 'Despensa')}</button><button aria-pressed="${supTab === 'calc'}" data-t="calc">${L('How much', 'Cuánto')}</button></div>${body}</div>`;
+  if (supTab === 'pantry') bindPantry(() => R.supplies());
   view.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { supTab = b.dataset.t; R.supplies(); });
   const em = $('#essmore'); if (em) em.onclick = () => { store.set('essAll', true); R.supplies(); };
   const fb = $('#full'); if (fb) fb.onclick = () => { store.set('kitFull', !store.get('kitFull', false)); R.supplies(); };
@@ -920,6 +936,173 @@ R.setup = (rest) => {
   $('#snext').onclick = () => { keep(); advance(false); };
   $('#sskip').onclick = () => { keep(); advance(true); };
 };
+
+/* ---------- outage day check: a short list each morning of a long outage ---------- */
+const DAYCHECK = () => [
+  ['food', L('Check the food clock. Eat fridge food first.', 'Revisa el reloj de comida. Coman primero lo del refri.'), 'food'],
+  ['cooler', L('Fresh ice or frozen bottles in the cooler', 'Hielo nuevo o botellas congeladas en la hielera'), ''],
+  ['phones', L('Charge phones from a power bank, one phone on at a time', 'Carga los teléfonos con la batería portátil, uno prendido a la vez'), 'skills/batteries'],
+  ['water', L('Refill water bottles and check how much is left', 'Rellena las botellas y revisa cuánta agua queda'), 'supplies/pantry'],
+  ['toilet', L('Toilet supplies: bags and cat litter', 'Cosas para el baño: bolsas y arena para gato'), 'skills/toilet'],
+  ['temp', L('Check the temperature inside: stay or go?', 'Revisa la temperatura adentro: ¿quedarse o irse?'), 'stay'],
+  ['neighbors', L('Check on neighbors, especially older ones', 'Pregunta por los vecinos, sobre todo los mayores'), ''],
+  ...(hasKids() ? [['kids', L("Keep the kids' routine: breakfast, a job each", 'Mantén la rutina de los niños: desayuno y un trabajo para cada uno'), 'skills/kidsdays']] : []),
+  ['news', L('Listen for the restore time and write it down', 'Escucha la hora estimada de regreso y anótala'), 'notes']
+];
+const dayN = o => Math.floor((Date.now() - o.start + 12 * 3600000) / 864e5) + 1;
+function dayCheckHTML(o) {
+  if (Date.now() - o.start < 12 * 3600000) return '';
+  const n = dayN(o), t = (o.day && o.day.n === n) ? o.day.t : {}, D = DAYCHECK(), done = D.filter(([k]) => t[k]).length;
+  return `<details class="daycheck" ${done < D.length ? 'open' : ''}><summary><span class="qa-ic t-amber">${ic('sunrise')}</span><div class="grow"><b>${L('Day', 'Día')} ${n} ${L('check', ': revisión')}</b><small>${done} ${L('of', 'de')} ${D.length} ${L('done', 'listos')}</small></div>${ic('chevron-down', 'g-chev')}</summary>
+    <div class="dc-list">${D.map(([k, txt, link]) => `<div class="dc-row"><label class="chk"><input type="checkbox" data-day="${k}" ${t[k] ? 'checked' : ''}><span>${txt}</span></label>${link ? `<button class="round ghost" data-go="${link}" aria-label="${L('Open', 'Abrir')}">${ic('chevron-right')}</button>` : ''}</div>`).join('')}</div></details>`;
+}
+function bindDayCheck() {
+  view.querySelectorAll('[data-day]').forEach(cb => cb.onchange = () => {
+    const o = outage(); if (!o) return; const n = dayN(o);
+    if (!o.day || o.day.n !== n) o.day = { n, t: {} };
+    if (cb.checked) o.day.t[cb.dataset.day] = 1; else delete o.day.t[cb.dataset.day];
+    store.set('outage', o);
+    const s = view.querySelector('.daycheck small'), D = DAYCHECK(); if (s) s.textContent = `${Object.keys(o.day.t).length} ${L('of', 'de')} ${D.length} ${L('done', 'listos')}`;
+  });
+}
+
+/* ---------- outage notes: what the radio said, restore times, who checked in ---------- */
+const NOTE_QUICK = () => [L('Restore time: ', 'Hora de regreso: '), L('Boil-water notice', 'Aviso de hervir el agua'), L('Shelter or warming center open at ', 'Refugio o centro abierto en '), L('Checked on neighbors', 'Preguntamos por los vecinos'), L('Medicine given at ', 'Medicina a las ')];
+R.notes = () => {
+  const notes = store.get('notes', []);
+  const fmt = ms => new Date(ms).toLocaleString(lang === 'es' ? 'es-US' : 'en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  view.innerHTML = `<div class="screen">${bar(L('Outage notes', 'Notas del apagón'))}
+    <p class="muted" style="padding:0 4px;margin:0">${L('Write down what you hear and do, with the time. Saved on this phone.', 'Anota lo que escuchas y lo que hacen, con la hora. Se guarda en este teléfono.')}</p>
+    <div class="card note-new"><div class="chips">${NOTE_QUICK().map((q, i) => `<button class="chip" data-q="${i}">${esc(q.trim())}</button>`).join('')}</div>
+      <textarea id="nt" rows="3" placeholder="${L('e.g. Radio: power back by 6 pm', 'ej. Radio: regresa la luz a las 6 pm')}" aria-label="${L('New note', 'Nota nueva')}"></textarea>
+      <button class="btn" id="nsave">${ic('plus')}${L('Save note', 'Guardar nota')}</button></div>
+    ${notes.length ? `<div class="list">${notes.map((n, i) => `<div class="row note"><div class="grow"><small>${fmt(n.t)}</small><span>${esc(n.x)}</span></div><button class="round ghost" data-del="${i}" aria-label="${L('Delete note', 'Borrar nota')}">${ic('trash')}</button></div>`).join('')}</div>
+      <div class="row2"><button class="btn ghost" id="nshare">${ic('share-2')}${L('Share', 'Compartir')}</button><button class="btn ghost" id="nclear">${L('Clear all', 'Borrar todo')}</button></div>`
+      : `<div class="empty">${L('No notes yet.', 'Todavía no hay notas.')}</div>`}</div>`;
+  const ta = $('#nt');
+  view.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { ta.value = NOTE_QUICK()[+b.dataset.q] + ta.value; ta.focus(); });
+  $('#nsave').onclick = () => { const x = ta.value.trim(); if (!x) return ta.focus(); const n = store.get('notes', []); n.unshift({ t: Date.now(), x }); store.set('notes', n.slice(0, 100)); R.notes(); toast(L('Saved', 'Guardada')); };
+  view.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const n = store.get('notes', []); n.splice(+b.dataset.del, 1); store.set('notes', n); R.notes(); });
+  const sh = $('#nshare'); if (sh) sh.onclick = async () => {
+    const text = L('Our outage notes', 'Nuestras notas del apagón') + '\n' + store.get('notes', []).slice().reverse().map(n => `${fmt(n.t)}: ${n.x}`).join('\n');
+    try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { return; }
+    try { await navigator.clipboard.writeText(text); toast(L('Copied', 'Copiado')); } catch (e) { toast(L('Could not copy', 'No se pudo copiar')); }
+  };
+  const cl = $('#nclear'); if (cl) { let armed = false; cl.onclick = () => { if (!armed) { armed = true; cl.textContent = L('Tap again to clear', 'Toca otra vez para borrar'); setTimeout(() => { armed = false; if (cl.isConnected) cl.textContent = L('Clear all', 'Borrar todo'); }, 3000); return; } store.set('notes', []); R.notes(); }; }
+};
+
+/* ---------- night-light: the screen as a warm lamp, a red light for night vision, or a bright white one ---------- */
+R.light = () => {
+  const LIGHTS = { warm: '#ffb35c', red: '#ff2a12', white: '#fff6e6' };
+  let mode = store.get('lightMode', 'warm'), level = store.get('lightLevel', 55), mins = store.get('lightMins', 30), lock = null, offT = null, hideT = null;
+  view.innerHTML = `<div class="nl" id="nl"><div class="nl-glow" id="glow"></div>
+    <div class="nl-ui" id="nlui"><button class="nl-x" id="nlx" aria-label="${L('Close the night-light', 'Cerrar la lamparita')}">${ic('x')}</button>
+      <div class="nl-panel"><div class="nl-row">${[['warm', L('Warm', 'Cálida')], ['red', L('Red', 'Roja')], ['white', L('Bright', 'Blanca')]].map(([k, t]) => `<button class="nl-chip ${mode === k ? 'on' : ''}" data-m="${k}">${t}</button>`).join('')}</div>
+        <label class="nl-slide"><span>${ic('sun')}</span><input type="range" id="lv" min="8" max="100" value="${level}" aria-label="${L('Brightness', 'Brillo')}"></label>
+        <div class="nl-row">${[15, 30, 60, 0].map(m => `<button class="nl-chip ${mins === m ? 'on' : ''}" data-min="${m}">${m ? m + ' min' : L('Stay on', 'Siempre')}</button>`).join('')}</div>
+        <p class="nl-tip">${L('Red keeps your eyes used to the dark. Turn the phone brightness up for more light; it uses more battery.', 'La roja mantiene tus ojos acostumbrados a la oscuridad. Sube el brillo del teléfono para más luz; gasta más batería.')}</p></div></div></div>`;
+  const nl = $('#nl'), glow = $('#glow'), ui = $('#nlui');
+  const paint = () => { glow.style.background = `radial-gradient(circle at 50% 45%, ${LIGHTS[mode]} 0, ${LIGHTS[mode]} 55%, #000 140%)`; glow.style.opacity = level / 100; };
+  const arm = () => { clearTimeout(offT); if (mins) offT = setTimeout(close, mins * 60000); };
+  const peek = () => { ui.classList.remove('hide'); clearTimeout(hideT); hideT = setTimeout(() => ui.classList.add('hide'), 5000); };
+  function stop() { clearTimeout(offT); clearTimeout(hideT); try { lock && lock.release(); } catch (e) {} lock = null; }
+  function close() { stop(); pageStop = null; history.length > 1 ? history.back() : go(''); }
+  view.querySelectorAll('[data-m]').forEach(b => b.onclick = e => { e.stopPropagation(); mode = b.dataset.m; store.set('lightMode', mode); view.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b)); paint(); peek(); });
+  view.querySelectorAll('[data-min]').forEach(b => b.onclick = e => { e.stopPropagation(); mins = +b.dataset.min; store.set('lightMins', mins); view.querySelectorAll('[data-min]').forEach(x => x.classList.toggle('on', x === b)); arm(); peek(); });
+  $('#lv').oninput = e => { level = +e.target.value; store.set('lightLevel', level); paint(); peek(); };
+  $('#nlx').onclick = e => { e.stopPropagation(); close(); };
+  nl.addEventListener('pointerdown', e => { if (ui.classList.contains('hide')) { e.preventDefault(); peek(); } });
+  pageStop = stop;
+  (async () => { try { if (navigator.wakeLock) lock = await navigator.wakeLock.request('screen'); } catch (e) {} })();
+  paint(); arm(); peek();
+};
+
+/* ---------- CPR beat: a pulsing circle and a click at 110 a minute ---------- */
+function cprBeatHTML() {
+  return `<section class="beat" id="beat"><div class="beat-top"><div class="beat-dot" id="bdot"><span id="bcount">0</span></div>
+    <div class="beat-info"><b>${L('Practice the beat', 'Practica el ritmo')}</b><small>${L('Push down with each pulse: 110 a minute. Practice on a pillow, never on a person.', 'Empuja con cada pulso: 110 por minuto. Practica en una almohada, nunca en una persona.')}</small><span class="beat-time" id="btime"></span></div></div>
+    <button class="btn" id="bgo">${ic('play')}${L('Start the beat', 'Empezar el ritmo')}</button></section>`;
+}
+function cprBeat() {
+  const dot = $('#bdot'), cnt = $('#bcount'), tm = $('#btime'), btn = $('#bgo');
+  let ac = null, iv = null, n = 0, t0 = 0;
+  const period = 60000 / 110;
+  function click() {
+    n++; cnt.textContent = n; dot.classList.remove('hit'); void dot.offsetWidth; dot.classList.add('hit');
+    const s = Math.floor((Date.now() - t0) / 1000), left = Math.max(0, 120 - s);
+    tm.textContent = left ? L(`Switch helpers in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, `Cambien en ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`) : L('Switch helpers now if you can', 'Cambien de persona si pueden');
+    if (ac) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = n % 2 ? 1000 : 800; g.gain.setValueAtTime(.35, ac.currentTime); g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + .06); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + .07); }
+  }
+  function stop() { clearInterval(iv); iv = null; try { ac && ac.close(); } catch (e) {} ac = null; if (btn.isConnected) btn.innerHTML = ic('play') + L('Start the beat', 'Empezar el ritmo'); pageStop = null; }
+  btn.onclick = () => {
+    if (iv) return stop();
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; }
+    n = 0; t0 = Date.now(); click(); iv = setInterval(click, period); pageStop = stop;
+    btn.innerHTML = ic('pause') + L('Stop', 'Parar');
+  };
+}
+
+/* ---------- tap a guide picture to see it full screen ---------- */
+function openPic(src) {
+  const d = document.createElement('div'); d.className = 'lbox'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', L('Picture, full screen', 'Dibujo en pantalla completa'));
+  d.innerHTML = `<button class="lbox-x" aria-label="${L('Close', 'Cerrar')}">${ic('x')}</button><div class="lbox-in"><img src="${src}" alt=""></div><p>${L('Turn your phone sideways for a bigger view. Pinch to zoom.', 'Gira el teléfono para verlo más grande. Pellizca para acercar.')}</p>`;
+  const close = () => { d.remove(); document.removeEventListener('keydown', esc_); };
+  const esc_ = e => { if (e.key === 'Escape') close(); };
+  d.addEventListener('click', e => { if (e.target === d || e.target.closest('.lbox-x')) close(); });
+  document.addEventListener('keydown', esc_);
+  document.body.appendChild(d); d.querySelector('.lbox-x').focus();
+}
+
+/* ---------- pantry: what you have, and how many days it lasts ---------- */
+const PANTRY_QUICK = () => [
+  ['soup', L('Canned soup or chili', 'Sopa o chili de lata'), 1, 0], ['meat', L('Canned meat, chicken or tuna', 'Carne, pollo o atún de lata'), 1, 0],
+  ['beans', L('Canned beans', 'Frijoles de lata'), 1.5, 0], ['veg', L('Canned vegetables', 'Verduras de lata'), .5, 0], ['fruit', L('Canned fruit', 'Fruta de lata'), .5, 0],
+  ['pb', L('Peanut butter (16 oz jar)', 'Crema de cacahuate (16 oz)'), 6, 0], ['crackers', L('Crackers (box)', 'Galletas saladas (caja)'), 3, 0], ['cereal', L('Cereal (box)', 'Cereal (caja)'), 5, 0],
+  ['milk', L('Shelf-stable milk (quart)', 'Leche de caja (cuarto)'), 2, 0], ['bars', L('Granola or protein bar', 'Barra de granola o proteína'), .5, 0],
+  ['oats', L('Oats (42 oz)', 'Avena (42 oz)'), 15, 1], ['rice', L('Rice (2 lb bag)', 'Arroz (bolsa de 2 lb)'), 10, 1], ['pasta', L('Pasta (1 lb box)', 'Pasta (caja de 1 lb)'), 4, 1],
+  ['flour', L('Flour (needs an oven)', 'Harina (necesita horno)'), 0, 1],
+  ...(littles() ? [['babyfood', L('Baby food jar or pouch', 'Frasco o bolsita de comida de bebé'), .5, 0]] : [])
+];
+function pantryStats() {
+  const P = store.get('pantry', { items: [], gal: 0 }), people = Math.max(1, (H().adults || 0) + (H().kids || 0));
+  const meals = P.items.reduce((s, x) => s + x.q * x.m, 0), nocook = P.items.filter(x => !x.c).reduce((s, x) => s + x.q * x.m, 0);
+  return { P, people, days: meals / (people * 3), nocookDays: nocook / (people * 3), waterDays: (P.gal || 0) / people };
+}
+function pantryHTML() {
+  const { P, people, days, nocookDays, waterDays } = pantryStats();
+  const d1 = v => v >= 10 ? Math.floor(v) : Math.floor(v * 2) / 2;
+  const pct = v => Math.min(100, Math.round(v / 14 * 100));
+  const now = new Date(), soon = new Date(now.getFullYear(), now.getMonth() + 3, 1).toISOString().slice(0, 7);
+  const useFirst = P.items.filter(x => x.e && x.e <= soon).sort((a, b) => a.e < b.e ? -1 : 1);
+  const mon = e => new Date(e + '-15').toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { month: 'short', year: 'numeric' });
+  return `<section class="pan-sum"><div class="pan-stat"><span class="qa-ic t-amber">${ic('utensils')}</span><div class="grow"><b>${d1(days)} ${L('days of food', 'días de comida')}</b><small>${d1(nocookDays)} ${L('of them with no cooking', 'sin cocinar')} · ${people} ${people === 1 ? L('person', 'persona') : L('people', 'personas')}</small><div class="track"><i style="width:${pct(days)}%"></i></div></div></div>
+    <div class="pan-stat"><span class="qa-ic t-blue">${ic('droplets')}</span><div class="grow"><b>${d1(waterDays)} ${L('days of water', 'días de agua')}</b><small>${L('1 gallon per person per day', '1 galón por persona al día')}</small><div class="track"><i style="width:${pct(waterDays)}%"></i></div></div></div>
+    <p class="muted small" style="margin:0">${L('Goal: 14 days. Estimates: 3 meals a person a day. Change "meals each" to match your labels.', 'Meta: 14 días. Son cálculos: 3 comidas por persona al día. Cambia "comidas" según tus etiquetas.')}</p></section>
+    <div class="list"><div class="stepper" style="padding:10px 16px"><b style="flex:1">${L('Gallons of water stored', 'Galones de agua guardados')}</b><button data-gal="-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val" style="font-size:1.3rem">${P.gal || 0}</span><button data-gal="1" aria-label="${L('More', 'Más')}">+</button></div></div>
+    ${useFirst.length ? `<div class="sub-label">${ic('calendar-check')}${L('Use first', 'Úsalos primero')}</div><div class="list">${useFirst.map(x => `<div class="row"><div class="grow"><b>${esc(x.n)}</b><small>${x.e < now.toISOString().slice(0, 7) ? L('Past date: ', 'Ya pasó la fecha: ') : L('Best by ', 'Consumir antes de ')}${mon(x.e)}</small></div></div>`).join('')}</div>` : ''}
+    <div class="sub-label">${ic('package')}${L('What we have', 'Lo que tenemos')}</div>
+    <div class="list">${P.items.length ? P.items.map((x, i) => `<div class="pan-item"><div class="pan-name"><div class="grow"><b>${esc(x.n)}</b><small>${x.q * x.m ? `${+(x.q * x.m).toFixed(1)} ${x.q * x.m === 1 ? L('meal', 'comida') : L('meals', 'comidas')}` : L('not counted', 'no se cuenta')}${x.c ? ' · ' + L('needs cooking', 'hay que cocinar') : ''}${x.e ? ' · ' + L('best by ', 'antes de ') + mon(x.e) : ''}</small></div>
+      <div class="stepper sm"><button data-pq="${i},-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val">${x.q}</span><button data-pq="${i},1" aria-label="${L('More', 'Más')}">+</button></div></div>
+      <details class="pan-edit"><summary>${L('Edit', 'Editar')}</summary><div class="pan-ctl"><label class="pan-f"><small>${L('meals each', 'comidas c/u')}</small><input type="number" inputmode="decimal" step="0.5" min="0" value="${x.m}" data-pm="${i}"></label>
+        <label class="pan-f"><small>${L('best by', 'antes de')}</small><input type="month" value="${x.e || ''}" data-pe="${i}"></label><button class="round ghost" data-pdel="${i}" aria-label="${L('Remove', 'Quitar')} ${esc(x.n)}">${ic('trash')}</button></div></details></div>`).join('') : `<div class="empty">${L('Nothing yet. Tap what you have below.', 'Todavía nada. Toca abajo lo que tienes.')}</div>`}</div>
+    <div class="sub-label">${ic('plus')}${L('Add', 'Agregar')}</div>
+    <div class="chips pan-add">${PANTRY_QUICK().map(([k, t]) => `<button class="chip" data-padd="${k}">${t}</button>`).join('')}</div>
+    <div class="card pan-own"><input id="pn" placeholder="${L('Something else', 'Otra cosa')}" aria-label="${L('Other food', 'Otra comida')}"><button class="btn small" id="padd">${ic('plus')}${L('Add', 'Agregar')}</button></div>`;
+}
+function bindPantry(redraw) {
+  const get = () => store.get('pantry', { items: [], gal: 0 }), put = P => { store.set('pantry', P); };
+  const keep = fn => { const y = scrollY; fn(); redraw(); scrollTo(0, y); };
+  view.querySelectorAll('[data-gal]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.gal = Math.max(0, (P.gal || 0) + +b.dataset.gal); put(P); }));
+  view.querySelectorAll('[data-padd]').forEach(b => b.onclick = () => keep(() => {
+    const P = get(), [k, n, m, c] = PANTRY_QUICK().find(x => x[0] === b.dataset.padd), ex = P.items.find(x => x.k === k);
+    if (ex) ex.q++; else P.items.push({ k, n, q: 1, m, c }); put(P); toast(L('Added: ', 'Agregado: ') + n);
+  }));
+  const own = $('#padd'); if (own) own.onclick = () => { const v = $('#pn').value.trim(); if (!v) return $('#pn').focus(); keep(() => { const P = get(); P.items.push({ k: 'own' + Date.now(), n: v, q: 1, m: 1, c: 0 }); put(P); }); };
+  view.querySelectorAll('[data-pq]').forEach(b => b.onclick = () => keep(() => { const [i, d] = b.dataset.pq.split(',').map(Number), P = get(); P.items[i].q = Math.max(0, P.items[i].q + d); put(P); }));
+  view.querySelectorAll('[data-pdel]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.items.splice(+b.dataset.pdel, 1); put(P); }));
+  view.querySelectorAll('[data-pm]').forEach(inp => inp.onchange = () => keep(() => { const P = get(), v = parseFloat(inp.value); P.items[+inp.dataset.pm].m = isNaN(v) ? 0 : Math.max(0, v); put(P); }));
+  view.querySelectorAll('[data-pe]').forEach(inp => inp.onchange = () => keep(() => { const P = get(); P.items[+inp.dataset.pe].e = inp.value || ''; put(P); }));
+}
 
 /* ================= Kids Mode ================= */
 const K = {};

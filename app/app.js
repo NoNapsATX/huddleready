@@ -1054,15 +1054,22 @@ function openPic(src) {
 }
 
 /* ---------- pantry: what you have, and how many days it lasts ---------- */
+/* pantry: a starter list everyone sees (tap + to fill in amounts), plus "something else" for anything not on it */
 const PANTRY_QUICK = () => [
-  ['soup', L('Canned soup or chili', 'Sopa o chili de lata'), 1, 0], ['meat', L('Canned meat, chicken or tuna', 'Carne, pollo o atún de lata'), 1, 0],
+  ['soup', L('Canned soup', 'Sopa de lata'), 1, 0], ['chili', L('Canned chili', 'Chili de lata'), 1, 0], ['meat', L('Canned meat, chicken or tuna', 'Carne, pollo o atún de lata'), 1, 0],
   ['beans', L('Canned beans', 'Frijoles de lata'), 1.5, 0], ['veg', L('Canned vegetables', 'Verduras de lata'), .5, 0], ['fruit', L('Canned fruit', 'Fruta de lata'), .5, 0],
   ['pb', L('Peanut butter (16 oz jar)', 'Crema de cacahuate (16 oz)'), 6, 0], ['crackers', L('Crackers (box)', 'Galletas saladas (caja)'), 3, 0], ['cereal', L('Cereal (box)', 'Cereal (caja)'), 5, 0],
-  ['milk', L('Shelf-stable milk (quart)', 'Leche de caja (cuarto)'), 2, 0], ['bars', L('Granola or protein bar', 'Barra de granola o proteína'), .5, 0],
+  ['milk', L('Shelf-stable milk (quart)', 'Leche de caja (cuarto)'), 2, 0], ['bars', L('Granola or protein bars', 'Barras de granola o proteína'), .5, 0],
+  ...(littles() ? [['babyfood', L('Baby food jars or pouches', 'Frascos o bolsitas de comida de bebé'), .5, 0]] : []),
   ['oats', L('Oats (42 oz)', 'Avena (42 oz)'), 15, 1], ['rice', L('Rice (2 lb bag)', 'Arroz (bolsa de 2 lb)'), 10, 1], ['pasta', L('Pasta (1 lb box)', 'Pasta (caja de 1 lb)'), 4, 1],
-  ['flour', L('Flour (needs an oven)', 'Harina (necesita horno)'), 0, 1],
-  ...(littles() ? [['babyfood', L('Baby food jar or pouch', 'Frasco o bolsita de comida de bebé'), .5, 0]] : [])
+  ['flour', L('Flour (needs an oven)', 'Harina (necesita horno)'), 0, 1]
 ];
+// every row the pantry shows: the starter list (names in the current language) merged with what's saved, then your own items
+function pantryRows(P) {
+  const saved = Object.fromEntries(P.items.map(x => [x.k, x]));
+  const base = PANTRY_QUICK().map(([k, n, m, c]) => Object.assign({ k, q: 0, m, c, e: '' }, saved[k] || {}, { n, c }));
+  return base.concat(P.items.filter(x => !PANTRY_QUICK().some(q => q[0] === x.k)));
+}
 function pantryStats() {
   const P = store.get('pantry', { items: [], gal: 0 }), people = Math.max(1, (H().adults || 0) + (H().kids || 0));
   const meals = P.items.reduce((s, x) => s + x.q * x.m, 0), nocook = P.items.filter(x => !x.c).reduce((s, x) => s + x.q * x.m, 0);
@@ -1073,35 +1080,37 @@ function pantryHTML() {
   const d1 = v => v >= 10 ? Math.floor(v) : Math.floor(v * 2) / 2;
   const pct = v => Math.min(100, Math.round(v / 14 * 100));
   const now = new Date(), soon = new Date(now.getFullYear(), now.getMonth() + 3, 1).toISOString().slice(0, 7);
-  const useFirst = P.items.filter(x => x.e && x.e <= soon).sort((a, b) => a.e < b.e ? -1 : 1);
+  const rows = pantryRows(P), has = rows.filter(x => x.q > 0).length;
+  const useFirst = rows.filter(x => x.q > 0 && x.e && x.e <= soon).sort((a, b) => a.e < b.e ? -1 : 1);
   const mon = e => new Date(e + '-15').toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { month: 'short', year: 'numeric' });
+  const item = x => { const meals = x.q * x.m;
+    return `<div class="pan-item${x.q ? '' : ' zero'}"><div class="pan-name"><div class="grow"><b>${esc(x.n)}</b><small>${x.q ? (meals ? `${+meals.toFixed(1)} ${meals === 1 ? L('meal', 'comida') : L('meals', 'comidas')}` : L('not counted', 'no se cuenta')) + (x.e ? ' · ' + L('best by ', 'antes de ') + mon(x.e) : '') : L('Tap + to add', 'Toca + para agregar')}</small></div>
+      <div class="stepper sm"><button data-pq="${x.k},-1" aria-label="${L('Less', 'Menos')} ${esc(x.n)}" ${x.q ? '' : 'disabled'}>−</button><span class="val">${x.q}</span><button data-pq="${x.k},1" aria-label="${L('More', 'Más')} ${esc(x.n)}">+</button></div></div>
+      ${x.q || x.k.startsWith('own') ? `<details class="pan-edit"><summary>${L('Edit', 'Editar')}</summary><div class="pan-ctl"><label class="pan-f"><small>${L('meals each', 'comidas c/u')}</small><input type="number" inputmode="decimal" step="0.5" min="0" value="${x.m}" data-pm="${x.k}"></label>
+        <label class="pan-f"><small>${L('best by', 'antes de')}</small><input type="month" value="${x.e || ''}" data-pe="${x.k}"></label>${x.k.startsWith('own') ? `<button class="round ghost" data-pdel="${x.k}" aria-label="${L('Remove', 'Quitar')} ${esc(x.n)}">${ic('trash')}</button>` : ''}</div></details>` : ''}</div>`; };
+  const ready = rows.filter(x => !x.c && !x.k.startsWith('own')), cook = rows.filter(x => x.c && !x.k.startsWith('own')), own = rows.filter(x => x.k.startsWith('own'));
   return `<section class="pan-sum"><div class="pan-stat"><span class="qa-ic t-amber">${ic('utensils')}</span><div class="grow"><b>${d1(days)} ${L('days of food', 'días de comida')}</b><small>${d1(nocookDays)} ${L('of them with no cooking', 'sin cocinar')} · ${people} ${people === 1 ? L('person', 'persona') : L('people', 'personas')}</small><div class="track"><i style="width:${pct(days)}%"></i></div></div></div>
     <div class="pan-stat"><span class="qa-ic t-blue">${ic('droplets')}</span><div class="grow"><b>${d1(waterDays)} ${L('days of water', 'días de agua')}</b><small>${L('1 gallon per person per day', '1 galón por persona al día')}</small><div class="track"><i style="width:${pct(waterDays)}%"></i></div></div></div>
-    <p class="muted small" style="margin:0">${L('Goal: 14 days. Estimates: 3 meals a person a day. Change "meals each" to match your labels.', 'Meta: 14 días. Son cálculos: 3 comidas por persona al día. Cambia "comidas" según tus etiquetas.')}</p></section>
+    <p class="muted small" style="margin:0">${has ? L('Goal: 14 days. Estimates: 3 meals a person a day. Tap Edit to match your labels.', 'Meta: 14 días. Son cálculos: 3 comidas por persona al día. Toca Editar para ajustar a tus etiquetas.') : L('Tap + next to what you have. That\'s it. The days add up for you.', 'Toca + junto a lo que tienes. Eso es todo. Los días se suman solos.')}</p></section>
     <div class="list"><div class="stepper" style="padding:10px 16px"><b style="flex:1">${L('Gallons of water stored', 'Galones de agua guardados')}</b><button data-gal="-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val" style="font-size:1.3rem">${P.gal || 0}</span><button data-gal="1" aria-label="${L('More', 'Más')}">+</button></div></div>
     ${useFirst.length ? `<div class="sub-label">${ic('calendar-check')}${L('Use first', 'Úsalos primero')}</div><div class="list">${useFirst.map(x => `<div class="row"><div class="grow"><b>${esc(x.n)}</b><small>${x.e < now.toISOString().slice(0, 7) ? L('Past date: ', 'Ya pasó la fecha: ') : L('Best by ', 'Consumir antes de ')}${mon(x.e)}</small></div></div>`).join('')}</div>` : ''}
-    <div class="sub-label">${ic('package')}${L('What we have', 'Lo que tenemos')}</div>
-    <div class="list">${P.items.length ? P.items.map((x, i) => `<div class="pan-item"><div class="pan-name"><div class="grow"><b>${esc(x.n)}</b><small>${x.q * x.m ? `${+(x.q * x.m).toFixed(1)} ${x.q * x.m === 1 ? L('meal', 'comida') : L('meals', 'comidas')}` : L('not counted', 'no se cuenta')}${x.c ? ' · ' + L('needs cooking', 'hay que cocinar') : ''}${x.e ? ' · ' + L('best by ', 'antes de ') + mon(x.e) : ''}</small></div>
-      <div class="stepper sm"><button data-pq="${i},-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val">${x.q}</span><button data-pq="${i},1" aria-label="${L('More', 'Más')}">+</button></div></div>
-      <details class="pan-edit"><summary>${L('Edit', 'Editar')}</summary><div class="pan-ctl"><label class="pan-f"><small>${L('meals each', 'comidas c/u')}</small><input type="number" inputmode="decimal" step="0.5" min="0" value="${x.m}" data-pm="${i}"></label>
-        <label class="pan-f"><small>${L('best by', 'antes de')}</small><input type="month" value="${x.e || ''}" data-pe="${i}"></label><button class="round ghost" data-pdel="${i}" aria-label="${L('Remove', 'Quitar')} ${esc(x.n)}">${ic('trash')}</button></div></details></div>`).join('') : `<div class="empty">${L('Nothing yet. Tap what you have below.', 'Todavía nada. Toca abajo lo que tienes.')}</div>`}</div>
-    <div class="sub-label">${ic('plus')}${L('Add', 'Agregar')}</div>
-    <div class="chips pan-add">${PANTRY_QUICK().map(([k, t]) => `<button class="chip" data-padd="${k}">${t}</button>`).join('')}</div>
-    <div class="card pan-own"><input id="pn" placeholder="${L('Something else', 'Otra cosa')}" aria-label="${L('Other food', 'Otra comida')}"><button class="btn small" id="padd">${ic('plus')}${L('Add', 'Agregar')}</button></div>`;
+    <div class="sub-label">${ic('package')}${L('Ready to eat', 'Listo para comer')}</div><div class="list">${ready.map(item).join('')}</div>
+    <div class="sub-label">${ic('cooking-pot')}${L('Needs cooking', 'Hay que cocinar')}</div><div class="list">${cook.map(item).join('')}</div>
+    <div class="sub-label">${ic('plus')}${L('Something else', 'Otra cosa')}</div>
+    ${own.length ? `<div class="list">${own.map(item).join('')}</div>` : ''}
+    <div class="card pan-own"><input id="pn" placeholder="${L('e.g. Tortillas, applesauce', 'ej. Tortillas, puré de manzana')}" aria-label="${L('Other food', 'Otra comida')}"><button class="btn small" id="padd">${ic('plus')}${L('Add', 'Agregar')}</button></div>`;
 }
 function bindPantry(redraw) {
-  const get = () => store.get('pantry', { items: [], gal: 0 }), put = P => { store.set('pantry', P); };
+  const get = () => store.get('pantry', { items: [], gal: 0 }), put = P => { P.items = P.items.filter(x => x.q > 0 || x.k.startsWith('own')); store.set('pantry', P); };
   const keep = fn => { const y = scrollY; fn(); redraw(); scrollTo(0, y); };
+  // find a saved item by key, creating it from the starter list if it isn't saved yet
+  const it = (P, k) => { let x = P.items.find(i => i.k === k); if (!x) { const q = PANTRY_QUICK().find(r => r[0] === k); x = { k, n: q[1], q: 0, m: q[2], c: q[3], e: '' }; P.items.push(x); } return x; };
   view.querySelectorAll('[data-gal]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.gal = Math.max(0, (P.gal || 0) + +b.dataset.gal); put(P); }));
-  view.querySelectorAll('[data-padd]').forEach(b => b.onclick = () => keep(() => {
-    const P = get(), [k, n, m, c] = PANTRY_QUICK().find(x => x[0] === b.dataset.padd), ex = P.items.find(x => x.k === k);
-    if (ex) ex.q++; else P.items.push({ k, n, q: 1, m, c }); put(P); toast(L('Added: ', 'Agregado: ') + n);
-  }));
-  const own = $('#padd'); if (own) own.onclick = () => { const v = $('#pn').value.trim(); if (!v) return $('#pn').focus(); keep(() => { const P = get(); P.items.push({ k: 'own' + Date.now(), n: v, q: 1, m: 1, c: 0 }); put(P); }); };
-  view.querySelectorAll('[data-pq]').forEach(b => b.onclick = () => keep(() => { const [i, d] = b.dataset.pq.split(',').map(Number), P = get(); P.items[i].q = Math.max(0, P.items[i].q + d); put(P); }));
-  view.querySelectorAll('[data-pdel]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.items.splice(+b.dataset.pdel, 1); put(P); }));
-  view.querySelectorAll('[data-pm]').forEach(inp => inp.onchange = () => keep(() => { const P = get(), v = parseFloat(inp.value); P.items[+inp.dataset.pm].m = isNaN(v) ? 0 : Math.max(0, v); put(P); }));
-  view.querySelectorAll('[data-pe]').forEach(inp => inp.onchange = () => keep(() => { const P = get(); P.items[+inp.dataset.pe].e = inp.value || ''; put(P); }));
+  view.querySelectorAll('[data-pq]').forEach(b => b.onclick = () => keep(() => { const [k, d] = b.dataset.pq.split(','), P = get(), x = it(P, k); x.q = Math.max(0, x.q + +d); put(P); }));
+  const own = $('#padd'); if (own) own.onclick = () => { const v = $('#pn').value.trim(); if (!v) return $('#pn').focus(); keep(() => { const P = get(); P.items.push({ k: 'own' + Date.now(), n: v, q: 1, m: 1, c: 0, e: '' }); put(P); }); };
+  view.querySelectorAll('[data-pdel]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.items = P.items.filter(x => x.k !== b.dataset.pdel); put(P); }));
+  view.querySelectorAll('[data-pm]').forEach(inp => inp.onchange = () => keep(() => { const P = get(), v = parseFloat(inp.value); it(P, inp.dataset.pm).m = isNaN(v) ? 0 : Math.max(0, v); put(P); }));
+  view.querySelectorAll('[data-pe]').forEach(inp => inp.onchange = () => keep(() => { const P = get(); it(P, inp.dataset.pe).e = inp.value || ''; put(P); }));
 }
 
 /* ================= Kids Mode ================= */

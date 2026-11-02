@@ -666,3 +666,5 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 .pan-own{display:flex;gap:8px;align-items:center}.pan-own input{flex:1;min-width:0;border:0;border-radius:12px;background:var(--sunk);color:var(--ink);font:inherit;padding:12px}
 /* print one guide */
 @media print{.knot,.beat,#sprint,.list.row,.call.wide911{display:none!important}.steps-big li{break-inside:avoid;box-shadow:none;border:1px solid #ccd}.steps-big .fig{max-width:420px;margin-left:0;width:100%}.skill-when,.dont,.tipbox{box-shadow:none;border:1px solid #ccd}}
+.pan-item.zero b{font-weight:600;color:var(--muted)}.pan-item.zero small{font-size:.78rem}
+.stepper.sm button:disabled{opacity:.35}

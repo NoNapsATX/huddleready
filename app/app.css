@@ -682,3 +682,4 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 .inst-n{flex:none;width:32px;height:32px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:800}
 .inst-ic{flex:none;width:48px;height:48px;border-radius:12px;background:var(--t-blue-soft);color:var(--t-blue);display:grid;place-items:center}.inst-ic svg{width:26px;height:26px}
 .inst-big{width:100%;min-height:58px;font-size:1.1rem}
+.chk.keep input:checked+span,.chk.keep input:checked~span{text-decoration:none;color:var(--ink);opacity:1}

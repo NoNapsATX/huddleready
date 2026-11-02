@@ -820,10 +820,12 @@ R.details = () => {
 /* ---------- share with family (the plan travels only inside the link) ---------- */
 const b64e = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64d = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
-function shareLink() {
+function shareLink(withSup) {
   const h = Object.assign({}, home); delete h.skipped; delete h.utilManual;
   const i = Object.assign({}, info); if (Array.isArray(i.extra)) i.extra = i.extra.filter(x => x.n || x.p);
-  const data = b64e(JSON.stringify({ v: 1, h, i, l: lang }));
+  const d = { v: 1, h, i, l: lang };
+  if (withSup) { const P = store.get('pantry', null); d.s = { k: store.get('kit2', {}), p: P && { gal: P.gal || 0, items: (P.items || []).map(x => ({ k: x.k, n: x.n, q: x.q, m: x.m, c: x.c, e: x.e || '' })) } }; }
+  const data = b64e(JSON.stringify(d));
   return location.href.split('#')[0] + '#import/' + data;
 }
 const APP_URL = () => location.href.split('#')[0];
@@ -834,18 +836,20 @@ function shareApp() {
   if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg, url }).catch(() => {}); else copy();
 }
 R.share = () => {
-  const url = shareLink();
+  const withSup = store.get('shareSup', true), url = shareLink(withSup);
   const has = [L('Household answers', 'Respuestas del hogar'), H().cross && L('Cross streets', 'Calles que cruzan'), info.outside && L('Meeting spot', 'Lugar de reunión'), (info.fallback1 || info.fallback2) && L('Fallback places', 'Lugares de Plan B'),
-    ['contact', 'er', 'pediatrician', 'doctor', 'leasing'].some(k => info[k]) || (info.extra || []).length ? L('Contacts and phone numbers', 'Contactos y teléfonos') : null, info.gate && L('Gate code', 'Código de la reja'), info.phone && L('Our phone number', 'Nuestro teléfono')].filter(Boolean);
+    ['contact', 'er', 'pediatrician', 'doctor', 'leasing'].some(k => info[k]) || (info.extra || []).length ? L('Contacts and phone numbers', 'Contactos y teléfonos') : null, info.gate && L('Gate code', 'Código de la reja'), info.phone && L('Our phone number', 'Nuestro teléfono'), withSup && L('Supply checklist and pantry', 'Lista de provisiones y despensa')].filter(Boolean);
   const msg = L("Here's our family's Huddle Ready outage plan. Open this link on your phone, then add the app to your home screen:", 'Este es el plan de apagones de nuestra familia en Huddle Ready. Abre este enlace en tu teléfono y luego agrega la app a tu pantalla de inicio:');
   view.innerHTML = `<div class="screen">${bar(L('Share with family', 'Compartir con la familia'))}
     <div class="card"><b>${L('The link includes', 'El enlace incluye')}</b><ul class="inc">${has.map(x => `<li>${x}</li>`).join('')}</ul>
-    <p class="muted small" style="margin:0">${L('Your details travel only inside the link. Nothing is stored on a server. Anyone who has the link can see them, so send it only to family. The supply checklist stays on each phone.', 'Tus datos viajan solo dentro del enlace. No se guarda nada en un servidor. Cualquiera que tenga el enlace puede verlos, así que envíalo solo a tu familia. La lista de provisiones se queda en cada teléfono.')}</p></div>
+    <p class="muted small" style="margin:0">${L('Your details travel only inside the link. Nothing is stored on a server. Anyone who has the link can see them, so send it only to family.', 'Tus datos viajan solo dentro del enlace. No se guarda nada en un servidor. Cualquiera que tenga el enlace puede verlos, así que envíalo solo a tu familia. La lista de provisiones se queda en cada teléfono.')}</p></div>
+    <label class="chk keep"><input type="checkbox" id="inc" ${withSup ? 'checked' : ''}><span>${L('Include our supply checklist and pantry', 'Incluir nuestra lista de provisiones y despensa')}</span></label>
     <button class="btn wide" id="sh">${ic('share-2')}${L('Send the link', 'Enviar el enlace')}</button>
     <button class="btn ghost wide" id="cp">${ic('copy')}${L('Copy the link', 'Copiar el enlace')}</button>
     <p class="muted small" style="padding:0 4px">${L('On the other phone, opening the link shows what will be added and asks before saving.', 'En el otro teléfono, al abrir el enlace se muestra lo que se va a agregar y se pregunta antes de guardar.')}</p></div>`;
   const copy = () => { const done = () => toast(L('Link copied', 'Enlace copiado')); try { navigator.clipboard.writeText(msg + '\n' + url).then(done, () => prompt('', url)); } catch (e) { prompt('', url); } };
   $('#cp').onclick = copy;
+  $('#inc').onchange = e => { store.set('shareSup', e.target.checked); R.share(); };
   $('#sh').onclick = () => { if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg, url }).catch(() => {}); else copy(); };
 };
 R.import = rest => {
@@ -853,13 +857,13 @@ R.import = rest => {
   if (!d || d.v !== 1 || !d.h) { view.innerHTML = `<div class="screen">${bar(L('Import plan', 'Importar plan'))}<div class="empty">${L("This link didn't work. Ask for a new one.", 'Este enlace no funcionó. Pide uno nuevo.')}</div><button class="btn wide" data-go="">${L('Home', 'Inicio')}</button></div>`; return; }
   const h = d.h, i = d.i || {};
   const rows = [h.cross && [L('Near', 'Cerca de'), h.cross + (h.zip ? ', ' + h.zip : '')], [L('Household', 'Hogar'), `${h.adults || 0} ${h.adults === 1 ? L('adult', 'adulto') : L('adults', 'adultos')}${h.kids ? ', ' + h.kids + ' ' + (h.kids === 1 ? L('kid', 'niño') : L('kids', 'niños')) : ''}`], (UTILS[h.util] || h.utilName) && [L('Electric company', 'Compañía eléctrica'), (UTILS[h.util] && UTILS[h.util].name) || h.utilName],
-    i.outside && [L('Outside spot', 'Lugar afuera'), i.outside], i.fallback1 && [L('Fallback 1', 'Plan B 1'), i.fallback1], i.contact && [L('Out-of-area contact', 'Contacto fuera del área'), i.contact]].filter(Boolean);
+    i.outside && [L('Outside spot', 'Lugar afuera'), i.outside], i.fallback1 && [L('Fallback 1', 'Plan B 1'), i.fallback1], i.contact && [L('Out-of-area contact', 'Contacto fuera del área'), i.contact], d.s && [L('Also', 'También'), L('Supply checklist and pantry', 'Lista de provisiones y despensa')]].filter(Boolean);
   view.innerHTML = `<div class="screen"><div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div><div class="brand">Huddle Ready</div><div class="muted small">${L('A family plan was shared with you', 'Te compartieron un plan familiar')}</div></div></div>
     <div class="list">${rows.map(([k, v]) => `<div class="row"><div class="grow"><small>${esc(k)}</small><b>${esc(v)}</b></div></div>`).join('')}</div>
-    ${home ? `<div class="verdict v1"><b>${L('This replaces the plan on this phone', 'Esto reemplaza el plan de este teléfono')}</b><span>${L('Household answers and contacts are replaced. Your supply checklist stays.', 'Se reemplazan las respuestas del hogar y los contactos. Tu lista de provisiones se queda.')}</span></div>` : ''}
+    ${home ? `<div class="verdict v1"><b>${L('This replaces the plan on this phone', 'Esto reemplaza el plan de este teléfono')}</b><span>${d.s ? L('Household answers, contacts, supply checklist and pantry are replaced.', 'Se reemplazan las respuestas del hogar, los contactos, la lista de provisiones y la despensa.') : L('Household answers and contacts are replaced. Your supply checklist stays.', 'Se reemplazan las respuestas del hogar y los contactos. Tu lista de provisiones se queda.')}</span></div>` : ''}
     <button class="btn wide" id="imp">${L('Use this plan on this phone', 'Usar este plan en este teléfono')}</button>
     <button class="btn ghost wide" id="no">${L('Cancel', 'Cancelar')}</button></div>`;
-  $('#imp').onclick = () => { home = Object.assign({ skipped: [] }, h); store.set('home', home); info = i; store.set('info', info); if (!store.get('lang', null) && d.l) setLang(d.l); history.replaceState(null, '', location.pathname); toast(L('Plan saved on this phone', 'Plan guardado en este teléfono')); route(); };
+  $('#imp').onclick = () => { home = Object.assign({ skipped: [] }, h); store.set('home', home); info = i; store.set('info', info); if (d.s) { if (d.s.k) store.set('kit2', d.s.k); if (d.s.p) store.set('pantry', d.s.p); } if (!store.get('lang', null) && d.l) setLang(d.l); history.replaceState(null, '', location.pathname); toast(L('Plan saved on this phone', 'Plan guardado en este teléfono')); route(); };
   $('#no').onclick = () => { history.replaceState(null, '', location.pathname + (home ? '' : '#setup')); route(); };
 };
 

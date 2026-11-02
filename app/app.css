@@ -214,7 +214,7 @@ mark{background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:
 .k-tile img{width:84px;height:84px}
 .k-tile:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(29,26,58,.12)}
 .k-tile.wide{grid-column:1/-1;grid-template-columns:auto 1fr;justify-items:start;align-items:center;padding:14px 20px}
-.c6{background:#e3d4ff}.c7{background:#c8f1ff}.c8{background:#ffd6f2}.c1{background:#ffe08a}.c2{background:#ffc7d4}.c3{background:#b9f0cf}.c4{background:#c9d8ff}.c5{background:#ffd0a8}
+.c6{background:#e3d4ff}.c7{background:#c8f1ff}.c8{background:#ffd6f2}.c9{background:#2b2f6b;color:#fff3cf}.c1{background:#ffe08a}.c2{background:#ffc7d4}.c3{background:#b9f0cf}.c4{background:#c9d8ff}.c5{background:#ffd0a8}
 .k-card{background:#fff;border-radius:32px;padding:22px;display:grid;gap:16px;justify-items:center;text-align:center;box-shadow:0 6px 0 rgba(29,26,58,.08)}
 .k-pic{width:190px;height:190px;border-radius:50%;display:grid;place-items:center}
 .k-pic img{width:120px;height:120px}
@@ -580,3 +580,30 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 @keyframes bop{from{transform:translateY(0) rotate(-8deg)}to{transform:translateY(-22px) rotate(8deg)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.dance.moving .dancers img,.pup-svg,.pup-svg g{animation:none!important}}
+/* kids: bedtime */
+.bed{position:relative;margin:-12px -16px -40px;padding:12px 16px 40px;min-height:100vh;min-height:100dvh;background:radial-gradient(120% 70% at 50% 100%,#3a2a4a 0,#151a3d 45%,#0a0d24 100%);color:#fff3cf;overflow:hidden}
+.bed .k-top{position:relative;z-index:2}.bed .k-title{color:#fff3cf}
+.bed .k-home,.bed .k-sound{background:#232a5a;box-shadow:0 3px 0 #10143a;color:#fff3cf}
+.stars{position:absolute;inset:0;background-image:radial-gradient(1.6px 1.6px at 12% 18%,#fff 50%,transparent 51%),radial-gradient(1.2px 1.2px at 32% 9%,#fff 50%,transparent 51%),radial-gradient(1.8px 1.8px at 58% 22%,#ffe9a8 50%,transparent 51%),radial-gradient(1.2px 1.2px at 78% 12%,#fff 50%,transparent 51%),radial-gradient(1.5px 1.5px at 88% 30%,#fff 50%,transparent 51%),radial-gradient(1.2px 1.2px at 22% 38%,#fff 50%,transparent 51%),radial-gradient(1.4px 1.4px at 68% 40%,#ffe9a8 50%,transparent 51%),radial-gradient(1.1px 1.1px at 45% 52%,#fff 50%,transparent 51%),radial-gradient(1.3px 1.3px at 8% 60%,#fff 50%,transparent 51%),radial-gradient(1.2px 1.2px at 92% 58%,#fff 50%,transparent 51%);animation:twinkle 5s ease-in-out infinite alternate;opacity:.8;pointer-events:none}
+@keyframes twinkle{to{opacity:.35}}
+.bed-moon{position:relative;z-index:1;display:grid;place-items:center;height:150px}
+.bed-moon img{width:116px;height:116px;filter:drop-shadow(0 0 28px rgba(255,214,120,.55));animation:breathe 7s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.06);filter:drop-shadow(0 0 40px rgba(255,214,120,.75))}}
+.bed-steps{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:4px 0 14px}
+.bed-step{display:grid;justify-items:center;gap:6px;padding:10px 4px;border-radius:18px;background:rgba(255,255,255,.06);font-size:.9rem;text-align:center;line-height:1.15;transition:background .6s,opacity .6s;opacity:.75}
+.bed-step img{width:44px;height:44px}
+.bed-step.on{background:rgba(255,214,120,.22);opacity:1;box-shadow:0 0 0 2px rgba(255,214,120,.6)}
+.bed-step.done{opacity:.45}
+.glowstick{width:12px;height:44px;border-radius:8px;background:#7dff9a;box-shadow:0 0 14px 4px rgba(125,255,154,.6)}
+.bed-ctl{position:relative;z-index:2;display:grid;gap:12px;transition:opacity 1.2s}
+.bed-row{display:flex;gap:8px}
+.bed-chip{flex:1;border:0;border-radius:16px;min-height:52px;background:#232a5a;color:#fff3cf;font-family:var(--display);font-size:1.05rem;font-weight:600}
+.bed-chip.on{background:#ffd27a;color:#2a1f05}
+.bed-go{width:100%;background:#ffd27a;box-shadow:0 5px 0 #c99a3a}
+.bed-note{font-family:var(--ui);font-size:.9rem;color:#c9c3e6;margin:0;text-align:center}
+.bed-sleep{position:relative;z-index:1;text-align:center;font-size:1.6rem;margin:18px 0 0;color:#ffe9b5}
+.bed.asleep .bed-ctl,.bed.asleep .bed-steps,.bed.asleep .k-top{opacity:.06}
+.bed.asleep{background:radial-gradient(90% 50% at 50% 90%,#2a1e2c 0,#0b0d1e 55%,#05060f 100%)}
+.bed.asleep .bed-moon img{opacity:.55}
+@media (prefers-reduced-motion:reduce){.stars,.bed-moon img{animation:none}}
+#kids.kbed{background:#0a0d24}

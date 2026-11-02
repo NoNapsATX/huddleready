@@ -163,14 +163,15 @@ const outTime = () => store.get('outTime', null);
 
 /* ---------- router ---------- */
 const R = {};
-let danceStop = null;
+let danceStop = null, bedStop = null;
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [name, ...rest] = h.split('/');
   clearInterval(route.tick); if (name !== 'calls') callEdit = false;
   document.documentElement.classList.toggle('night', !!outage());
   if (danceStop && !(name === 'kids' && rest[0] === 'dance')) danceStop();
-  if (name === 'kids') { const tb = $('#tabbar'); if (tb) tb.hidden = true; kids.hidden = false; document.body.style.overflow = 'hidden'; (K[rest[0] || 'home'] || K.home)(rest.slice(1)); return; }
+  if (bedStop && !(name === 'kids' && rest[0] === 'bed')) bedStop();
+  if (name === 'kids') { const tb = $('#tabbar'); if (tb) tb.hidden = true; kids.hidden = false; kids.classList.toggle('kbed', rest[0] === 'bed'); document.body.style.overflow = 'hidden'; (K[rest[0] || 'home'] || K.home)(rest.slice(1)); return; }
   kids.hidden = true; document.body.style.overflow = ''; try { voice.pause(); } catch (e) {}
   if (!home && name !== 'setup' && name !== 'import') { location.replace('#setup'); return; }
   (R[name] || R.home)(rest);
@@ -937,7 +938,8 @@ K.home = () => {
       <button class="k-tile c4" data-k="pack"><img src="${im('backpack')}" alt="">${L('My bag', 'Mi mochila')}</button>
       <button class="k-tile c6" data-k="shadow"><img src="${im('rabbit')}" alt="">${L('Shadows', 'Sombras')}</button>
       <button class="k-tile c7" data-k="breathe"><img src="${im('balloon')}" alt="">${L('Breathe', 'Respira')}</button>
-      <button class="k-tile c8 wide" data-k="dance"><img src="${im('disco')}" alt="" style="width:64px;height:64px"><span>${L('Freeze dance', 'Baila y congélate')}</span></button>
+      <button class="k-tile c8" data-k="dance"><img src="${im('disco')}" alt="">${L('Dance', 'Baila')}</button>
+      <button class="k-tile c9" data-k="bed"><img src="${im('night')}" alt="">${L('Bedtime', 'A dormir')}</button>
       <button class="k-tile c5 wide" data-k="phone"><img src="${im('telephone')}" alt="" style="width:64px;height:64px"><span>${L('Our phone number', 'Nuestro teléfono')}</span></button>
     </div>`;
   const h = $('#hold'); let t;
@@ -1110,6 +1112,65 @@ K.dance = () => {
     btn.innerHTML = ic('pause') + L('Stop', 'Parar'); dance();
   };
   say('dance_intro');
+};
+
+/* bedtime: a dim night-light screen, a short routine with the voice, then rain or a music box made on the phone */
+const BED = () => [['glow', L('Glow stick on', 'Barra de luz'), 'bed_glow'], ['teddy', L('Hug teddy', 'Abraza al osito'), 'bed_teddy'], ['tent', L('Snuggle in', 'Acurrúcate'), 'bed_blanket'], ['moon', L('Eyes closed', 'Ojos cerrados'), 'bed_eyes']];
+K.bed = () => {
+  if (bedStop) bedStop();
+  const S = BED(); let sound = store.get('bedSound', 'rain'), mins = store.get('bedMins', 20);
+  const stepPic = ([k]) => k === 'glow' ? '<span class="glowstick"></span>' : `<img src="${im(k)}" alt="">`;
+  kview.innerHTML = `<div class="bed" id="bed"><div class="stars"></div>
+    ${kbar(L('Bedtime', 'A dormir'))}
+    <div class="bed-moon"><img src="${im('moon')}" alt=""></div>
+    <div class="bed-steps" id="bsteps">${S.map((st, i) => `<div class="bed-step" data-i="${i}">${stepPic(st)}<span>${st[1]}</span></div>`).join('')}</div>
+    <div class="bed-ctl" id="bctl">
+      <div class="bed-row" role="group" aria-label="${L('Sound', 'Sonido')}">${[['rain', L('Rain', 'Lluvia')], ['music', L('Music box', 'Cajita musical')], ['off', L('Quiet', 'Silencio')]].map(([k, t]) => `<button class="bed-chip ${sound === k ? 'on' : ''}" data-snd="${k}">${t}</button>`).join('')}</div>
+      <div class="bed-row" role="group" aria-label="${L('Timer', 'Tiempo')}">${[10, 20, 40].map(m => `<button class="bed-chip ${mins === m ? 'on' : ''}" data-min="${m}">${m} min</button>`).join('')}</div>
+      <button class="k-btn bed-go" id="bgo">${ic('moon')}${L('Good night', 'Buenas noches')}</button>
+      <p class="bed-note">${L('The screen stays on as a night-light, then turns itself off when the timer ends.', 'La pantalla se queda prendida como lamparita y se apaga sola al terminar el tiempo.')}</p>
+    </div><p class="bed-sleep" id="bsl" aria-live="polite"></p></div>`;
+  const bed = $('#bed'), ctl = $('#bctl'), sl = $('#bsl');
+  let ac = null, out = null, timers = [], lock = null, running = false, hideT;
+  kview.querySelectorAll('[data-snd]').forEach(b => b.onclick = () => { sound = b.dataset.snd; store.set('bedSound', sound); kview.querySelectorAll('[data-snd]').forEach(x => x.classList.toggle('on', x === b)); if (running) { stopSound(); startSound(); } });
+  kview.querySelectorAll('[data-min]').forEach(b => b.onclick = () => { mins = +b.dataset.min; store.set('bedMins', mins); kview.querySelectorAll('[data-min]').forEach(x => x.classList.toggle('on', x === b)); });
+  function startSound() {
+    if (sound === 'off') return;
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+    out = ac.createGain(); out.gain.value = 0; out.connect(ac.destination); out.gain.setTargetAtTime(sound === 'rain' ? .5 : .35, ac.currentTime, 2);
+    if (sound === 'rain') {
+      const len = ac.sampleRate * 4, buf = ac.createBuffer(2, len, ac.sampleRate);
+      for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); let b0 = 0, b1 = 0, b2 = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = .997 * b0 + w * .029; b1 = .985 * b1 + w * .032; b2 = .95 * b2 + w * .048; d[i] = (b0 + b1 + b2 + w * .02) * .5; if (Math.random() < .00035) d[i] += (Math.random() - .5) * .6; } }
+      const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600;
+      src.connect(lp); lp.connect(out); src.start();
+    } else {
+      // music box: "Twinkle, Twinkle, Little Star" (traditional tune, public domain), slow and soft
+      const N = { C: 523.25, D: 587.33, E: 659.25, F: 698.46, G: 783.99, A: 880 };
+      const tune = 'CCGGAAG-FFEEDDC-GGFFEED-GGFFEED-CCGGAAG-FFEEDDC-';
+      let t = ac.currentTime + .3; const beat = .62;
+      const play = () => { if (!out) return; for (const ch of tune) { if (ch !== '-') { const f = N[ch]; [1, 2.01].forEach((m, j) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = f * m; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(j ? .05 : .22, t + .01); g.gain.exponentialRampToValueAtTime(.0005, t + 1.8); o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.9); }); } t += beat; } t += beat * 2; };
+      play(); const loop = setInterval(() => { if (!out) return clearInterval(loop); if (t - ac.currentTime < 4) play(); }, 1000); timers.push(loop);
+    }
+  }
+  function stopSound() { if (out && ac) { try { out.gain.setTargetAtTime(0, ac.currentTime, .3); } catch (e) {} const o = out; setTimeout(() => { try { o.disconnect(); } catch (e) {} }, 1500); } out = null; }
+  function showCtl() { bed.classList.remove('asleep'); clearTimeout(hideT); if (running) hideT = setTimeout(() => bed.classList.add('asleep'), 6000); }
+  function stop() { timers.forEach(clearTimeout); timers.forEach(clearInterval); timers = []; clearTimeout(hideT); stopSound(); setTimeout(() => { try { ac && ac.close(); } catch (e) {} ac = null; }, 1600); try { lock && lock.release(); } catch (e) {} lock = null; running = false; bedStop = null; if (bed.isConnected) { bed.classList.remove('asleep', 'running'); $('#bgo').innerHTML = ic('moon') + L('Good night', 'Buenas noches'); kview.querySelectorAll('.bed-step').forEach(x => x.classList.remove('on', 'done')); } }
+  $('#bgo').onclick = async () => {
+    if (running) { stop(); sl.textContent = ''; return; }
+    running = true; bedStop = stop; bed.classList.add('running'); $('#bgo').innerHTML = ic('pause') + L('Stop', 'Parar');
+    try { if (navigator.wakeLock) lock = await navigator.wakeLock.request('screen'); } catch (e) { lock = null; }
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; }
+    say('bed_intro');
+    const steps = [...kview.querySelectorAll('.bed-step')];
+    S.forEach(([, , clip], i) => timers.push(setTimeout(() => { steps.forEach((x, j) => { x.classList.toggle('on', j === i); x.classList.toggle('done', j < i); }); say(clip); }, 3500 + i * 6500)));
+    const after = 3500 + S.length * 6500 + 2000;
+    timers.push(setTimeout(() => { steps.forEach(x => { x.classList.remove('on'); x.classList.add('done'); }); startSound(); sl.textContent = L('Sleep tight', 'Que descanses'); showCtl(); }, after));
+    timers.push(setTimeout(() => { if (out && ac) out.gain.setTargetAtTime(0, ac.currentTime, 20); }, after + mins * 60000 - 60000));
+    timers.push(setTimeout(() => { stop(); sl.textContent = L('Sleep tight', 'Que descanses'); }, after + mins * 60000));
+  };
+  bed.addEventListener('pointerdown', e => { if (running && bed.classList.contains('asleep')) { e.preventDefault(); showCtl(); } });
+  document.addEventListener('visibilitychange', async () => { if (running && document.visibilityState === 'visible' && navigator.wakeLock && !lock) { try { lock = await navigator.wakeLock.request('screen'); } catch (e) {} } });
 };
 
 /* phone number */

@@ -131,3 +131,5 @@ footer .sos b{color:var(--red)}
   .top nav{gap:14px}
 }
 @media (max-width:420px){.top nav a.opt{display:none}}
+
+.install{margin:14px 0 0;color:#c9cde0;font-size:1rem}.install a{white-space:nowrap;color:#ffd15e;font-weight:700;text-underline-offset:3px}

@@ -174,7 +174,7 @@ function route() {
   if (bedStop && !(name === 'kids' && rest[0] === 'bed')) bedStop();
   if (name === 'kids') { const tb = $('#tabbar'); if (tb) tb.hidden = true; kids.hidden = false; kids.classList.toggle('kbed', rest[0] === 'bed'); document.body.style.overflow = 'hidden'; (K[rest[0] || 'home'] || K.home)(rest.slice(1)); return; }
   kids.hidden = true; document.body.style.overflow = ''; try { voice.pause(); } catch (e) {}
-  if (!home && name !== 'setup' && name !== 'import') { location.replace('#setup'); return; }
+  if (!home && name !== 'setup' && name !== 'import' && name !== 'install') { location.replace('#setup'); return; }
   (R[name] || R.home)(rest);
   tabbar(R[name] ? name : '');
   window.scrollTo(0, 0);
@@ -233,6 +233,7 @@ R.home = () => {
   } else {
     const r = readiness(), pct = Math.round(r.done / r.total * 100);
     body = `<button class="sos" id="sos">${ic('zap-off')}<div><b>${L('Power is out', 'Se fue la luz')}</b><span>${L('Start the first 10 minutes', 'Empieza los primeros 10 minutos')}</span></div>${ic('chevron-right', 'go')}</button>
+      ${installCardHTML()}
       ${skillStrip(false)}
       <section class="ready" aria-label="${L('Readiness', 'Preparación')}">
         <div class="ready-top"><div class="ring" style="--p:${pct}"><span>${r.done}<small>/${r.total}</small></span></div>
@@ -246,7 +247,7 @@ R.home = () => {
   view.innerHTML = `<div class="screen home">${top}${body}
     <div class="meet">${ic('map-pin')}<span>${L('Meeting point: home', 'Punto de reunión: casa')}${where ? ' (' + esc(where) + ')' : ''}${info.outside ? L('. Outside spot: ', '. Lugar afuera: ') + esc(info.outside) : ''}</span></div></div>`;
   $('#lang').onclick = () => { setLang(lang === 'es' ? 'en' : 'es'); R.home(); tabbar(''); };
-  if (o) bindDayCheck();
+  if (o) bindDayCheck(); else bindInstallCard();
   const sos = $('#sos'); if (sos) sos.onclick = () => { const now = Date.now(); store.set('outage', { start: now, step: 0, done: false }); store.set('outTime', now); go('outage'); };
   const end = $('#end'); if (end) { let armed = false; end.onclick = () => { if (!armed) { armed = true; end.textContent = L('Tap again to confirm', 'Toca otra vez para confirmar'); setTimeout(() => { armed = false; end.textContent = L('Power is back', 'Ya volvió la luz'); }, 3000); return; } store.set('outage', null); document.documentElement.classList.remove('night'); toast(L('Glad it\'s back. Check food before eating.', 'Qué bueno. Revisa la comida antes de comer.')); R.home(); }; }
   route.tick = setInterval(() => { const o = outage(); if (!o) return; const e = $('#elapsed'), f = $('#fridge'); const left = 4 * 3600000 - (Date.now() - (outTime() || o.start)); if (e) e.textContent = fmtDur(Date.now() - o.start); if (f) f.textContent = fridgeLeft(left); }, 30000);
@@ -697,6 +698,7 @@ const SHORTCUTS = () => [
   ['ready', 'circle-check', L('Your readiness', 'Su preparación'), 'ready readiness score progress next step listo preparación puntaje progreso siguiente paso'],
   ['check', 'bell', L('Twice-a-year check', 'Revisión de cada seis meses'), 'check reminder calendar battery batteries alarm smoke expiration twice year revisión recordatorio calendario batería alarma humo caducidad'],
   ['share', 'share-2', L('Share our plan (household only)', 'Compartir nuestro plan (solo la familia de casa)'), 'share send family spouse grandparent link text compartir enviar familia esposa abuelos enlace mensaje'],
+  ['install', 'smartphone', L('Install the app', 'Instalar la app'), 'install add home screen iphone android download app icon instalar agregar inicio pantalla descargar icono'],
   ['notes', 'notebook-pen', L('Outage notes', 'Notas del apagón'), 'notes log write down restore time radio said boil water notas anotar hora regreso radio aviso hervir'],
   ['light', 'lamp-desk', L('Night-light', 'Lamparita'), 'night light lamp flashlight screen light red dark sleep lamparita luz noche linterna pantalla roja oscuro'],
   ['supplies/pantry', 'package', L('Pantry: days of food and water', 'Despensa: días de comida y agua'), 'pantry food cans canned how many days water gallons stock inventory expiration use first despensa comida latas cuántos días agua galones inventario caducidad'],
@@ -795,6 +797,7 @@ R.details = () => {
   view.innerHTML = `<div class="screen">${bar(L('Our info', 'Nuestra info'))}
     ${langSeg()}
     <label class="toggle list big-toggle"><input type="checkbox" id="bigt" ${store.get('big', false) ? 'checked' : ''}><span><b>${L('Bigger text', 'Letra más grande')}</b><small>${L('Easier to read in the dark or without glasses', 'Más fácil de leer a oscuras o sin lentes')}</small></span></label>
+    ${isInstalled() ? '' : `<button class="list row" data-go="install"><span class="lead">${ic('smartphone')}</span><div class="grow"><b>${L('Install the app', 'Instalar la app')}</b><small>${L('Buttons for Android and iPhone', 'Botones para Android y iPhone')}</small></div>${ic('chevron-right', 'chev')}</button>`}
     <button class="list row" data-go="sheet"><span class="lead">${ic('printer')}</span><div class="grow"><b>${L('Fridge sheet', 'Hoja para el refri')}</b><small>${L('One printable page with your numbers, first steps and what to do next', 'Una página para imprimir con tus teléfonos, primeros pasos y lo que sigue')}</small></div>${ic('chevron-right', 'chev')}</button>
     <button class="list row" data-go="setup/edit"><span class="lead">${ic('house')}</span><div class="grow"><b>${L('Our household', 'Nuestro hogar')}</b><small>${sum}</small></div>${ic('chevron-right', 'chev')}</button>
     <button class="list row" data-go="check"><span class="lead">${ic('bell')}</span><div class="grow"><b>${L('Twice-a-year check and reminders', 'Revisión de cada seis meses y recordatorios')}</b><small>${store.get('lastCheck', 0) ? L('Last done ', 'La última fue el ') + fmtDate(store.get('lastCheck', 0)) : L('Add reminders to your calendar', 'Agrega recordatorios a tu calendario')}</small></div>${ic('chevron-right', 'chev')}</button>
@@ -935,6 +938,48 @@ R.setup = (rest) => {
   };
   $('#snext').onclick = () => { keep(); advance(false); };
   $('#sskip').onclick = () => { keep(); advance(true); };
+};
+
+
+/* ---------- install: a button for Android (real install prompt) and one for iPhone (Add to Home Screen steps) ---------- */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+window.addEventListener('appinstalled', () => { installEvt = null; store.set('installed', 1); toast(L('Installed. Look for Huddle Ready on your home screen.', 'Instalada. Busca Huddle Ready en tu pantalla de inicio.')); });
+const UA = navigator.userAgent;
+const isIOS = () => /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = () => /Android/i.test(UA);
+const inAppBrowser = () => /FBAN|FBAV|Instagram|Line\/|GSA\/|Snapchat|musical_ly|TikTok|LinkedInApp|Pinterest|; wv\)/i.test(UA);
+const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+async function androidInstall() {
+  if (installEvt) { const e = installEvt; installEvt = null; try { e.prompt(); const r = await e.userChoice; if (r && r.outcome === 'accepted') store.set('installed', 1); } catch (_) {} route(); return; }
+  go('install/android');
+}
+function installCardHTML() {
+  if (isInstalled() || store.get('installHide', 0)) return '';
+  const os = isIOS() ? 'ios' : isAndroid() ? 'android' : '';
+  return `<section class="inst" id="instcard"><div class="inst-top"><span class="qa-ic t-blue">${ic('smartphone')}</span><div class="grow"><b>${L('Put the app on your home screen', 'Pon la app en tu pantalla de inicio')}</b><small>${L('One tap to open, even with no internet.', 'Se abre con un toque, aunque no haya internet.')}</small></div><button class="inst-x" id="insthide" aria-label="${L('Hide', 'Ocultar')}">${ic('x')}</button></div>
+    <div class="inst-btns"><button class="inst-btn ${os === 'android' ? 'main' : ''}" id="inst-android">${ic('download')}<span>${L('Install on Android', 'Instalar en Android')}</span></button>
+      <button class="inst-btn ${os === 'ios' ? 'main' : ''}" data-go="install/ios">${ic('square-plus')}<span>${L('Add on iPhone', 'Agregar en iPhone')}</span></button></div></section>`;
+}
+function bindInstallCard() {
+  const a = $('#inst-android'); if (a) a.onclick = androidInstall;
+  const h = $('#insthide'); if (h) h.onclick = () => { store.set('installHide', 1); route(); toast(L('You can install it later from Our info.', 'Puedes instalarla después desde Nuestra info.')); };
+}
+R.install = (rest) => {
+  const os = rest && rest[0] === 'android' ? 'android' : rest && rest[0] === 'ios' ? 'ios' : (isAndroid() ? 'android' : 'ios');
+  const url = location.href.split('#')[0];
+  const step = (n, icn, t, sub) => `<li><span class="inst-n">${n}</span><div class="grow"><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</div><span class="inst-ic">${ic(icn)}</span></li>`;
+  const warnApp = inAppBrowser() ? `<div class="dont">${ic('triangle-alert')}<div><p>${os === 'ios' ? L('You opened this inside another app. Copy the link, then open it in Safari to install.', 'Abriste esto dentro de otra app. Copia el enlace y ábrelo en Safari para instalar.') : L('You opened this inside another app. Copy the link, then open it in Chrome to install.', 'Abriste esto dentro de otra app. Copia el enlace y ábrelo en Chrome para instalar.')}</p><button class="btn small" id="icopy">${ic('copy')}${L('Copy the link', 'Copiar el enlace')}</button></div></div>` : '';
+  const done = isInstalled() ? `<div class="tipbox">${ic('circle-check')}<p>${L('Huddle Ready is already on your home screen.', 'Huddle Ready ya está en tu pantalla de inicio.')}</p></div>` : '';
+  const ios = `<ol class="inst-steps">${step(1, 'compass', L('Open this page in Safari', 'Abre esta página en Safari'), L('In Chrome on iPhone this works too.', 'En Chrome para iPhone también funciona.'))}${step(2, 'share', L('Tap the Share button', 'Toca el botón Compartir'), L('The square with an arrow pointing up, at the bottom or top of the screen.', 'El cuadro con una flecha hacia arriba, abajo o arriba de la pantalla.'))}${step(3, 'square-plus', L('Scroll down and tap "Add to Home Screen"', 'Baja y toca "Agregar a pantalla de inicio"'), L('If you don\'t see it, tap "Edit Actions" at the bottom of the list.', 'Si no lo ves, toca "Editar acciones" al final de la lista.'))}${step(4, 'circle-check', L('Tap "Add"', 'Toca "Agregar"'), L('The Huddle Ready icon appears on your home screen.', 'El ícono de Huddle Ready aparece en tu pantalla de inicio.'))}</ol>`;
+  const android = `${installEvt ? `<button class="btn inst-big" id="ago">${ic('download')}${L('Install Huddle Ready', 'Instalar Huddle Ready')}</button><p class="muted small" style="padding:0 4px;margin:0">${L('Or do it by hand:', 'O hazlo a mano:')}</p>` : ''}
+    <ol class="inst-steps">${step(1, 'globe', L('Open this page in Chrome', 'Abre esta página en Chrome'), L('Samsung Internet works too. Not in a private tab.', 'Samsung Internet también funciona. No en una pestaña privada.'))}${step(2, 'ellipsis-vertical', L('Tap the ⋮ menu', 'Toca el menú ⋮'), L('Top right corner of Chrome.', 'Esquina de arriba a la derecha de Chrome.'))}${step(3, 'download', L('Tap "Install app" or "Add to Home screen"', 'Toca "Instalar app" o "Agregar a pantalla principal"'), '')}${step(4, 'circle-check', L('Tap "Install"', 'Toca "Instalar"'), L('The Huddle Ready icon appears with your apps.', 'El ícono de Huddle Ready aparece con tus apps.'))}</ol>`;
+  view.innerHTML = `<div class="screen">${bar(L('Install the app', 'Instalar la app'))}
+    <div class="seg" role="group" aria-label="${L('Phone type', 'Tipo de teléfono')}"><button aria-pressed="${os === 'android'}" data-go="install/android">Android</button><button aria-pressed="${os === 'ios'}" data-go="install/ios">iPhone</button></div>
+    ${done}${warnApp}${os === 'ios' ? ios : android}
+    <p class="muted small" style="padding:0 4px">${L('Free. No app store and no account. Everything you type stays on this phone. Not installed? It still works in the browser, even offline, once you\'ve opened it with internet.', 'Gratis. Sin tienda de apps y sin cuenta. Todo lo que escribes se queda en este teléfono. ¿No la instalaste? Igual funciona en el navegador, aun sin internet, después de abrirla una vez con internet.')}</p></div>`;
+  const g = $('#ago'); if (g) g.onclick = androidInstall;
+  const cp = $('#icopy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(url); toast(L('Link copied', 'Enlace copiado')); } catch (e) { prompt(L('Copy this link', 'Copia este enlace'), url); } };
 };
 
 /* ---------- outage day check: a short list each morning of a long outage ---------- */

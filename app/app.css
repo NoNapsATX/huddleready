@@ -668,3 +668,17 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 @media print{.knot,.beat,#sprint,.list.row,.call.wide911{display:none!important}.steps-big li{break-inside:avoid;box-shadow:none;border:1px solid #ccd}.steps-big .fig{max-width:420px;margin-left:0;width:100%}.skill-when,.dont,.tipbox{box-shadow:none;border:1px solid #ccd}}
 .pan-item.zero b{font-weight:600;color:var(--muted)}.pan-item.zero small{font-size:.78rem}
 .stepper.sm button:disabled{opacity:.35}
+/* install */
+.inst{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:14px;display:grid;gap:12px}
+.inst-top{display:flex;gap:12px;align-items:center}.inst-top .grow{display:grid;gap:2px;flex:1}.inst-top small{color:var(--muted)}
+.inst-x{width:40px;height:40px;border-radius:50%;border:0;background:var(--sunk);color:var(--muted);display:grid;place-items:center;flex:none}
+.inst-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inst-btn{min-height:56px;border-radius:14px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 10px;text-align:left;line-height:1.15}
+.inst-btn.main{background:var(--t-blue);border-color:var(--t-blue);color:#fff}
+.inst-btn svg{flex:none;width:22px;height:22px}
+.inst-steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.inst-steps li{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:14px}
+.inst-steps .grow{display:grid;gap:3px;flex:1}.inst-steps small{color:var(--muted);line-height:1.35}
+.inst-n{flex:none;width:32px;height:32px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:800}
+.inst-ic{flex:none;width:48px;height:48px;border-radius:12px;background:var(--t-blue-soft);color:var(--t-blue);display:grid;place-items:center}.inst-ic svg{width:26px;height:26px}
+.inst-big{width:100%;min-height:58px;font-size:1.1rem}

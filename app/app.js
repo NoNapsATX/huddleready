@@ -6,7 +6,7 @@ const view = $('#view'), kids = $('#kids'), kview = $('#kview');
 /* ---------- storage ---------- */
 const store = {
   get(k, d) { try { const v = localStorage.getItem('hr-' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem('hr-' + k, JSON.stringify(v)); } catch (e) {} }
+  set(k, v) { try { localStorage.setItem('hr-' + k, JSON.stringify(v)); } catch (e) {} if (store.hook) store.hook(k); }
 };
 
 /* ---------- language ---------- */
@@ -174,7 +174,7 @@ function route() {
   if (bedStop && !(name === 'kids' && rest[0] === 'bed')) bedStop();
   if (name === 'kids') { const tb = $('#tabbar'); if (tb) tb.hidden = true; kids.hidden = false; kids.classList.toggle('kbed', rest[0] === 'bed'); document.body.style.overflow = 'hidden'; (K[rest[0] || 'home'] || K.home)(rest.slice(1)); return; }
   kids.hidden = true; document.body.style.overflow = ''; try { voice.pause(); } catch (e) {}
-  if (!home && name !== 'setup' && name !== 'import' && name !== 'install') { location.replace('#setup'); return; }
+  if (!home && name !== 'setup' && name !== 'import' && name !== 'install' && name !== 'join' && name !== 'addlist') { location.replace('#setup'); return; }
   (R[name] || R.home)(rest);
   tabbar(R[name] ? name : '');
   window.scrollTo(0, 0);
@@ -492,7 +492,8 @@ R.calls = () => {
     view.innerHTML = `<div class="screen">${head}${where}
       <div class="label">${L('Emergency', 'Emergencia')}</div><div class="list">${emergency().map(row).join('')}</div>
       <div class="label">${L('Ours', 'Nuestros')}</div>${mine.length ? `<div class="list">${mine.map(rowMine).join('')}</div>` : `<button class="list row" id="cadd0"><span class="lead">${ic('plus')}</span><div class="grow"><b>${L('Add our contacts', 'Agregar nuestros contactos')}</b><small>${L('Out-of-area contact, fallback places, nearest ER, doctor', 'Contacto fuera del área, lugares de Plan B, emergencias, doctor')}</small></div></button>`}
-      ${nearSection()}</div>`;
+      ${nearSection()}
+      <button class="list row" data-go="share"><span class="lead">${ic('share-2')}</span><div class="grow"><b>${L('Share our plan with family', 'Compartir nuestro plan con la familia')}</b><small>${L('Send these numbers and our plan to someone in our home', 'Envía estos números y nuestro plan a alguien de la casa')}</small></div>${ic('chevron-right', 'chev')}</button></div>`;
     const a0 = $('#cadd0'); if (a0) a0.onclick = () => { callEdit = true; R.calls(); };
   } else {
     const u = util();
@@ -841,6 +842,8 @@ R.share = () => {
     ['contact', 'er', 'pediatrician', 'doctor', 'leasing'].some(k => info[k]) || (info.extra || []).length ? L('Contacts and phone numbers', 'Contactos y teléfonos') : null, info.gate && L('Gate code', 'Código de la reja'), info.phone && L('Our phone number', 'Nuestro teléfono'), withSup && L('Supply checklist and pantry', 'Lista de provisiones y despensa')].filter(Boolean);
   const msg = L("Here's our family's Huddle Ready outage plan. Open this link on your phone, then add the app to your home screen:", 'Este es el plan de apagones de nuestra familia en Huddle Ready. Abre este enlace en tu teléfono y luego agrega la app a tu pantalla de inicio:');
   view.innerHTML = `<div class="screen">${bar(L('Share with family', 'Compartir con la familia'))}
+    ${syncCardHTML()}
+    <div class="sub-label">${ic('send')}${L('Or send a one-time copy', 'O envía una copia única')}</div>
     <div class="card"><b>${L('The link includes', 'El enlace incluye')}</b><ul class="inc">${has.map(x => `<li>${x}</li>`).join('')}</ul>
     <p class="muted small" style="margin:0">${L('Your details travel only inside the link. Nothing is stored on a server. Anyone who has the link can see them, so send it only to family.', 'Tus datos viajan solo dentro del enlace. No se guarda nada en un servidor. Cualquiera que tenga el enlace puede verlos, así que envíalo solo a tu familia. La lista de provisiones se queda en cada teléfono.')}</p></div>
     <label class="chk keep"><input type="checkbox" id="inc" ${withSup ? 'checked' : ''}><span>${L('Include our supply checklist and pantry', 'Incluir nuestra lista de provisiones y despensa')}</span></label>
@@ -850,6 +853,7 @@ R.share = () => {
   const copy = () => { const done = () => toast(L('Link copied', 'Enlace copiado')); try { navigator.clipboard.writeText(msg + '\n' + url).then(done, () => prompt('', url)); } catch (e) { prompt('', url); } };
   $('#cp').onclick = copy;
   $('#inc').onchange = e => { store.set('shareSup', e.target.checked); R.share(); };
+  bindSyncCard();
   $('#sh').onclick = () => { if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg, url }).catch(() => {}); else copy(); };
 };
 R.import = rest => {
@@ -944,6 +948,231 @@ R.setup = (rest) => {
   $('#sskip').onclick = () => { keep(); advance(true); };
 };
 
+
+
+/* ---------- family sync: the plan is encrypted on the phone (AES-GCM) and stored as scrambled text.
+   The key travels only inside the family's private link (after the #), so the server can never read it. ---------- */
+const SYNC_URL = 'https://phtfogprpnriunzwjrwr.supabase.co/rest/v1/rpc/', SYNC_KEY = 'sb_publishable_RorZQqPjHeKZE3uHLOgTzg_acJ-8xFy';
+const SYNCED = ['home', 'info', 'kit2', 'pantry', 'notes'];
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const ub64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+const syncCfg = () => store.get('sync', null);
+let syncBusy = false, syncTimer = null, syncApplying = false;
+async function rpc(fn, body) {
+  const r = await fetch(SYNC_URL + fn, { method: 'POST', headers: { apikey: SYNC_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error('sync ' + r.status);
+  return r.json();
+}
+async function syncKey(k) { return crypto.subtle.importKey('raw', ub64u(k), 'AES-GCM', false, ['encrypt', 'decrypt']); }
+async function encryptSnap(cfg, snap) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await syncKey(cfg.key), new TextEncoder().encode(JSON.stringify(snap))); return { data: b64u(ct), iv: b64u(iv) }; }
+async function decryptSnap(cfg, row) { const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ub64u(row.iv) }, await syncKey(cfg.key), ub64u(row.data)); return JSON.parse(new TextDecoder().decode(pt)); }
+// a snapshot = {key: {v: value, t: when it last changed}}; merging keeps the newer of each key
+function localSnap() { const T = store.get('syncT', {}), o = {}; SYNCED.forEach(k => { const v = store.get(k, null); if (v != null) o[k] = { v, t: T[k] || 0 }; }); return o; }
+function mergeSnap(a, b) { const o = Object.assign({}, a); for (const k in b) if (!o[k] || (b[k].t || 0) > (o[k].t || 0)) o[k] = b[k]; return o; }
+function applySnap(snap) {
+  const T = store.get('syncT', {}); let changed = false; syncApplying = true;
+  for (const k of SYNCED) { const r = snap[k]; if (r && (r.t || 0) > (T[k] || 0)) { store.set(k, r.v); T[k] = r.t; changed = true; } }
+  syncApplying = false; store.set('syncT', T);
+  if (changed) { home = store.get('home', home); info = store.get('info', info); const a = document.activeElement; if (!(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !/^#(setup|kids|light)/.test(location.hash)) route(); }
+  return changed;
+}
+store.hook = k => { if (syncApplying || !SYNCED.includes(k)) return; const T = store.get('syncT', {}); T[k] = Date.now(); localStorage.setItem('hr-syncT', JSON.stringify(T)); if (syncCfg()) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); } };
+async function syncNow() {
+  const cfg = syncCfg(); if (!cfg || syncBusy || !navigator.onLine) return;
+  syncBusy = true;
+  try {
+    for (let tries = 0; tries < 3; tries++) {
+      const rows = await rpc('get_plan', { p_id: cfg.id }), row = rows && rows[0];
+      let snap = localSnap(), base = 0;
+      if (row) { const remote = await decryptSnap(cfg, row); applySnap(remote); snap = mergeSnap(localSnap(), remote); base = row.rev; if (JSON.stringify(snap) === JSON.stringify(remote)) { store.set('sync', Object.assign(cfg, { at: Date.now(), rev: row.rev })); break; } }
+      const enc = await encryptSnap(cfg, snap), rev = await rpc('put_plan', { p_id: cfg.id, p_data: enc.data, p_iv: enc.iv, p_base_rev: base });
+      if (rev > 0) { store.set('sync', Object.assign(cfg, { at: Date.now(), rev })); break; }
+    }
+    store.set('syncErr', 0);
+  } catch (e) { store.set('syncErr', Date.now()); }
+  syncBusy = false;
+  const st = $('#syncst'); if (st) st.textContent = syncStatus();
+}
+function syncStatus() {
+  const c = syncCfg(); if (!c) return '';
+  if (!navigator.onLine) return L('Waiting for internet. Changes will sync later.', 'Esperando internet. Los cambios se sincronizan después.');
+  if (store.get('syncErr', 0) > (c.at || 0)) return L('Could not reach the server. Will try again.', 'No se pudo conectar. Se intentará otra vez.');
+  if (!c.at) return L('Syncing…', 'Sincronizando…');
+  const m = Math.round((Date.now() - c.at) / 60000);
+  return m < 1 ? L('Synced just now', 'Sincronizado hace un momento') : m < 60 ? L(`Synced ${m} min ago`, `Sincronizado hace ${m} min`) : L('Synced ' + new Date(c.at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }), 'Sincronizado ' + new Date(c.at).toLocaleString('es-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }));
+}
+const joinLink = c => location.href.split('#')[0] + '#join/' + c.id + '.' + c.key;
+async function startSync() { const c = { id: b64u(crypto.getRandomValues(new Uint8Array(18))), key: b64u(crypto.getRandomValues(new Uint8Array(32))), at: 0, rev: 0 }; store.set('sync', c); await syncNow(); return syncCfg(); }
+window.addEventListener('online', () => syncNow());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
+setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 90000);
+setTimeout(syncNow, 1500);
+
+R.join = async rest => {
+  const [id, key] = String(rest[0] || '').split('.');
+  const fail = t => { view.innerHTML = `<div class="screen">${bar(L('Family sync', 'Sincronizar con la familia'))}<div class="empty">${t}</div><button class="btn wide" data-go="">${L('Home', 'Inicio')}</button></div>`; };
+  if (!id || !key) return fail(L("This link didn't work. Ask for a new one.", 'Este enlace no funcionó. Pide uno nuevo.'));
+  view.innerHTML = `<div class="screen">${bar(L('Family sync', 'Sincronizar con la familia'))}<div class="empty">${L('Opening your family plan…', 'Abriendo el plan familiar…')}</div></div>`;
+  let snap;
+  try { const rows = await rpc('get_plan', { p_id: id }); if (!rows || !rows[0]) return fail(L('This family plan was turned off. Ask for a new link.', 'Este plan familiar se apagó. Pide un enlace nuevo.')); snap = await decryptSnap({ key }, rows[0]); }
+  catch (e) { return fail(navigator.onLine ? L("This link didn't work. Ask for a new one.", 'Este enlace no funcionó. Pide uno nuevo.') : L('Connect to the internet once to join, then it works offline.', 'Conéctate a internet una vez para unirte; luego funciona sin internet.')); }
+  const h = (snap.home || {}).v || {}, i = (snap.info || {}).v || {};
+  const rows = [h.family && [L('Family', 'Familia'), h.family], h.cross && [L('Near', 'Cerca de'), h.cross], [L('Household', 'Hogar'), `${h.adults || 0} ${L('adults', 'adultos')}${h.kids ? ', ' + h.kids + ' ' + L('kids', 'niños') : ''}`], i.contact && [L('Out-of-area contact', 'Contacto fuera del área'), i.contact], snap.pantry && [L('Also', 'También'), L('Supplies, pantry and notes', 'Provisiones, despensa y notas')]].filter(Boolean);
+  view.innerHTML = `<div class="screen"><div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div><div class="brand">Huddle Ready</div><div class="muted small">${L('Join your family\'s plan', 'Únete al plan de tu familia')}</div></div></div>
+    <div class="list">${rows.map(([k, v]) => `<div class="row"><div class="grow"><small>${esc(k)}</small><b>${esc(v)}</b></div></div>`).join('')}</div>
+    <div class="tipbox">${ic('refresh-cw')}<p>${L('Changes on either phone show up on the other whenever both have internet.', 'Los cambios en un teléfono aparecen en el otro cuando los dos tienen internet.')}</p></div>
+    ${home ? `<div class="verdict v1"><b>${L('This replaces the plan on this phone', 'Esto reemplaza el plan de este teléfono')}</b></div>` : ''}
+    <button class="btn wide" id="jy">${L('Join and keep in sync', 'Unirme y sincronizar')}</button><button class="btn ghost wide" id="jn">${L('Cancel', 'Cancelar')}</button></div>`;
+  $('#jy').onclick = () => { store.set('syncT', {}); applySnap(snap); home = store.get('home', null); info = store.get('info', {}); if (home && !home.skipped) { home.skipped = []; store.set('home', home); }
+    store.set('sync', { id, key, at: Date.now(), rev: 0 }); history.replaceState(null, '', location.pathname); toast(L('Joined. Your phones now stay in sync.', 'Listo. Sus teléfonos ahora se sincronizan.')); syncNow(); route(); };
+  $('#jn').onclick = () => { history.replaceState(null, '', location.pathname + (home ? '' : '#setup')); route(); };
+};
+function syncCardHTML() {
+  const c = syncCfg();
+  if (!c) return `<section class="card sync"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Keep our phones in sync', 'Mantener nuestros teléfonos sincronizados')}</b><small>${L('Contacts, supplies, pantry and notes update on both phones automatically.', 'Contactos, provisiones, despensa y notas se actualizan solos en los dos teléfonos.')}</small></div></div>
+    <button class="btn wide" id="syon">${ic('refresh-cw')}${L('Turn on sync', 'Activar sincronización')}</button>
+    <p class="muted small" style="margin:0">${L('Your plan is locked (encrypted) on this phone before it is saved online. Only phones with your family link can unlock it.', 'Tu plan se cierra con llave (cifrado) en este teléfono antes de guardarse en internet. Solo los teléfonos con su enlace familiar lo pueden abrir.')}</p></section>`;
+  return `<section class="card sync on"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Sync is on', 'Sincronización activada')}</b><small id="syncst">${syncStatus()}</small></div></div>
+    <button class="btn wide" id="sysend">${ic('share-2')}${L('Send the sync link to your family', 'Enviar el enlace a tu familia')}</button>
+    <button class="btn ghost wide" id="sycopy">${ic('copy')}${L('Copy the sync link', 'Copiar el enlace')}</button>
+    <details class="got"><summary>${L('Turn off', 'Apagar')}</summary><div style="display:grid;gap:8px;padding-top:8px"><button class="btn ghost wide" id="syoff">${L('Stop syncing on this phone', 'Dejar de sincronizar en este teléfono')}</button><button class="btn ghost wide" id="sydel">${L('Delete the online copy for everyone', 'Borrar la copia en internet para todos')}</button></div></details></section>`;
+}
+function bindSyncCard() {
+  const on = $('#syon'); if (on) on.onclick = async () => { on.disabled = true; on.textContent = L('Turning on…', 'Activando…'); await startSync(); R.share(); };
+  const c = syncCfg(); if (!c) return;
+  const msg = L("Join our family's Huddle Ready plan. Open this link on your phone and tap Join. Keep it private: it unlocks our plan.", 'Únete al plan de Huddle Ready de nuestra familia. Abre este enlace en tu teléfono y toca Unirme. Es privado: abre nuestro plan.');
+  const copy = async () => { try { await navigator.clipboard.writeText(msg + '\n' + joinLink(c)); toast(L('Link copied', 'Enlace copiado')); } catch (e) { prompt('', joinLink(c)); } };
+  $('#sycopy').onclick = copy;
+  $('#sysend').onclick = () => { if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg, url: joinLink(c) }).catch(() => {}); else copy(); };
+  $('#syoff').onclick = () => { store.set('sync', null); toast(L('Sync is off on this phone', 'Sincronización apagada en este teléfono')); R.share(); };
+  const d = $('#sydel'); let armed = false; d.onclick = async () => { if (!armed) { armed = true; d.textContent = L('Tap again to delete for everyone', 'Toca otra vez para borrar para todos'); return; } try { await rpc('delete_plan', { p_id: c.id }); } catch (e) {} store.set('sync', null); toast(L('Online copy deleted', 'Copia en internet borrada')); R.share(); };
+}
+
+
+
+
+/* ---------- paste or upload a pantry list ("Tuna: 12 cans, 5 oz each") and turn it into pantry items ---------- */
+// meals per unit: one "meal" = one person's meal. These are rough, label-based estimates people can edit.
+const PANTRY_RULES = [
+  [/flour|cornmeal|baking mix/i, 0, 1],
+  [/\b(dry|dried)\b.*bean|bean.*\b(dry|dried)\b|lentil|split pea/i, 'bulk-beans', 1],
+  [/\brice\b/i, 'bulk-rice', 1],
+  [/oatmeal|\boats?\b|grits|cream of wheat/i, 'oats', 1],
+  [/pasta|spaghetti(?!os)|macaroni|noodle(?!.*soup)/i, 'bulk-pasta', 1],
+  [/tuna|sardine|salmon|vienna|spam\b/i, 'oz', 0],
+  [/chili|stew|soup|ravioli|spaghettios|chef boyardee|dumpling|pot pie|hash|beef-?a-?roni/i, 'meal', 0],
+  [/chicken|turkey|beef\b|ham\b|pork/i, 'meat', 0],
+  [/ro-?tel|tomato|salsa|sauce|paste|broth|stock/i, 'side', 0],
+  [/fruit|peach|pear|pineapple|mandarin|applesauce|cherry/i, 'fruit', 0],
+  [/corn|green bean|\bpeas?\b|carrot|vegetable|veggie|spinach|potato/i, 'veg', 0],
+  [/bean/i, 'beans', 0],
+  [/peanut butter|nut butter/i, 6, 0],
+  [/cracker|pretzel|chip/i, 3, 0],
+  [/cereal/i, 5, 0],
+  [/milk/i, 2, 0],
+  [/granola|protein bar|\bbars?\b/i, .5, 0],
+  [/baby food|pouch/i, .5, 0]
+];
+function sizeOz(t) {
+  t = String(t).toLowerCase();
+  let m = t.match(/([\d.]+)\s*(oz|ounce)/); if (m) return +m[1];
+  m = t.match(/([\d.]+)\s*(g|gram)s?\b/); if (m) return +m[1] / 28.35;
+  m = t.match(/([\d.]+)\s*(lb|pound)s?\b/); if (m) return +m[1] * 16;
+  m = t.match(/([\d.]+)\s*kg\b/); if (m) return +m[1] * 35.27;
+  return 0;
+}
+const half = v => Math.max(.5, Math.round(v * 2) / 2);
+function mealsFor(kind, oz, isPacket) {
+  if (typeof kind === 'number') return kind;
+  const z = oz || 15;
+  switch (kind) {
+    case 'oz': return half(z / 5);                  // a 5 oz can of tuna = about 1 meal
+    case 'meat': return half(z / 6);                // a 12.5 oz can of chicken = about 2 meals
+    case 'meal': return half(z / 10);               // a 15 oz can of chili or soup = about 1.5 meals
+    case 'side': return Math.max(.25, Math.round(z / 30 * 4) / 4); // tomatoes, Ro-Tel: part of a meal
+    case 'veg': case 'fruit': return z >= 32 ? half(z / 20) : .5;
+    case 'beans': return half(z / 10);
+    case 'oats': return isPacket ? .5 : half(z / 3);
+    default: return 1;
+  }
+}
+const BULK = { 'bulk-beans': [6, 8], 'bulk-rice': [10, 7], 'bulk-pasta': [4, 4] }; // meals per lb, meals per quart (dry)
+function parsePantryText(text) {
+  const items = [], skipped = [];
+  let section = '', gal = 0;
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.replace(/^[\s\-*•·]+/, '').trim();
+    if (!line) continue;
+    let name, rest;
+    const c = line.indexOf(':'), parts = line.split(',');
+    if (c > 0) { name = line.slice(0, c).trim(); rest = line.slice(c + 1).trim(); }
+    else if (parts.length >= 2 && /\d/.test(parts.slice(1).join(','))) { name = parts[0].trim(); rest = parts.slice(1).join(',').trim(); }
+    else if (/^\d/.test(line)) { const m = line.match(/^([\d.]+)\s*(?:x\s*)?(.*)$/); name = m[2]; rest = m[1]; }
+    else { if (!/\d/.test(line) && line.length < 40) section = line; else skipped.push(line); continue; }
+    if (!name || !rest || /^(include|total|note)/i.test(name)) { skipped.push(line); continue; }
+    const lower = rest.toLowerCase();
+    if (/\bwater\b/i.test(name) && !/chestnut|melon/i.test(name)) { const g = lower.match(/([\d.]+)\s*(gallons?|gal)\b/), cs = lower.match(/([\d.]+)\s*(cases?|packs?)\b/), bt = lower.match(/([\d.]+)\s*(bottles?)\b/); gal += g ? +g[1] : cs ? +cs[1] * 3 : bt ? +bt[1] * .13 : 0; continue; }
+    const cm = lower.match(/(?:about|around|~)?\s*([\d.]+)\s*(cans?|jars?|packets?|packs?|pouches?|boxes?|bags?|bottles?|cartons?|containers?|tins?|bars?)\b/);
+    const each = (lower.match(/,\s*([^,]*?)\s*each/) || [])[1] || '';
+    let rule = PANTRY_RULES.find(([re]) => re.test(name)) || [null, 1, 0];
+    // loose beans by the quart or pound are dry beans, not cans
+    if (rule[1] === 'beans' && !/\bcans?\b/.test(lower) && /(quarts?|qt|lb|pounds?|bags?)\b/.test(lower)) rule = [null, 'bulk-beans', 1];
+    const kind = rule[1], cook = rule[2] || (/dry goods|dry food|grains/i.test(section) && kind !== 6 ? 1 : 0);
+    let q, m;
+    if (typeof kind === 'string' && kind.startsWith('bulk') && !(cm && /can/.test(cm[2]))) {
+      const unit = cm ? (each || lower.replace(cm[0], '')) : lower;
+      const lb = sizeOz(unit) / 16, qt = +((unit.match(/([\d.]+)\s*(quarts?|qt)\b/) || [])[1] || 0);
+      q = cm ? Math.max(1, Math.round(+cm[1])) : 1; m = Math.round(lb ? lb * BULK[kind][0] : qt ? qt * BULK[kind][1] : 6);
+    } else if (cm) {
+      q = Math.max(1, Math.round(+cm[1]));
+      m = kind === 0 ? 0 : mealsFor(/^bulk/.test(kind) ? 'beans' : kind, sizeOz(each) || sizeOz(lower.replace(cm[0], '')), /packet|pack|pouch/.test(cm[2]));
+    } else if (kind === 0) {
+      q = 1; m = 0;
+    } else {
+      const n = (lower.match(/^(?:about|around|~)?\s*([\d.]+)\b(?!\s*(oz|g|lb|kg|quarts?|qt)\b)/) || [])[1];
+      q = n ? Math.max(1, Math.round(+n)) : 1; m = mealsFor(kind, sizeOz(lower), false);
+    }
+    const k = 'own-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+    items.push({ k, n: name, d: rest.replace(/\s+/g, ' '), q, m, c: cook ? 1 : 0, e: '' });
+  }
+  return { items, skipped, gal: Math.round(gal) };
+}
+function pantryPreview(items, skipped, back, gal) {
+  const meals = items.reduce((a, x) => a + x.q * x.m, 0);
+  view.innerHTML = `<div class="screen">${bar(L('Check your list', 'Revisa tu lista'))}
+    <p class="muted" style="padding:0 4px;margin:0">${items.length} ${L('foods found, about', 'comidas encontradas, unas')} ${Math.round(meals)} ${L('meals', 'comidas')}. ${L('Meal counts are estimates from the sizes. Change any of them later with Edit.', 'Las comidas son cálculos según el tamaño. Puedes cambiarlas después con Editar.')}</p>
+    <div class="list">${items.map(x => `<div class="row"><div class="grow"><b>${esc(x.n)}</b><small>${esc(x.d)}${x.c ? ' · ' + L('needs cooking', 'hay que cocinar') : ''}</small></div><span class="pill">${x.m ? +(x.q * x.m).toFixed(1) + ' ' + L('meals', 'comidas') : L('not counted', 'no cuenta')}</span></div>`).join('')}</div>
+    ${gal ? `<div class="tipbox">${ic('droplets')}<p>${L(`Plus ${gal} gallons of water, added to your water total.`, `Más ${gal} galones de agua, sumados a tu total de agua.`)}</p></div>` : ''}
+    ${skipped.length ? `<p class="muted small" style="padding:0 4px">${L('Lines not used:', 'Líneas que no se usaron:')} ${skipped.map(esc).join(' · ')}</p>` : ''}
+    <button class="btn wide" id="pa">${ic('plus')}${L('Add to my pantry', 'Agregar a mi despensa')}</button>
+    <button class="btn ghost wide" id="pb">${L('Back', 'Atrás')}</button></div>`;
+  $('#pa').onclick = () => {
+    const P = store.get('pantry', { items: [], gal: 0 });
+    if (gal) P.gal = (P.gal || 0) + gal;
+    items.forEach(x => { const i = P.items.findIndex(y => y.k === x.k); if (i >= 0) P.items[i] = Object.assign(P.items[i], { n: x.n, d: x.d, q: x.q, m: x.m, c: x.c }); else P.items.push(x); });
+    store.set('pantry', P); history.replaceState(null, '', location.pathname); toast(L('Added to your pantry', 'Agregado a tu despensa')); supTab = 'pantry'; go('supplies/pantry');
+  };
+  $('#pb').onclick = back;
+}
+R.pantrylist = () => {
+  view.innerHTML = `<div class="screen">${bar(L('Add a list', 'Agregar una lista'))}
+    <p class="muted" style="padding:0 4px;margin:0">${L('Paste a list, one food per line, like:', 'Pega una lista, una comida por línea, así:')}</p>
+    <pre class="pl-ex">${L('Tuna: 12 cans, 5 oz each\nChili: 6 cans, 15 oz each\nFlour: 25 lb\nInstant oatmeal: 52 packets', 'Atún: 12 latas, 5 oz cada una\nChili: 6 latas, 15 oz cada una\nHarina: 25 lb\nAvena instantánea: 52 sobres')}</pre>
+    <textarea id="pl" rows="10" placeholder="${L('Paste your list here', 'Pega tu lista aquí')}" aria-label="${L('Pantry list', 'Lista de la despensa')}"></textarea>
+    <label class="btn ghost wide pl-file">${ic('upload')}${L('Or upload a text file', 'O sube un archivo de texto')}<input type="file" id="pf" accept=".txt,.csv,text/plain,text/csv" hidden></label>
+    <button class="btn wide" id="pgo">${L('Read my list', 'Leer mi lista')}</button>
+    <p class="muted small" style="padding:0 4px">${L('Headings like "Dry goods" are fine. Everything stays on this phone.', 'Puedes dejar títulos como "Granos secos". Todo se queda en este teléfono.')}</p></div>`;
+  const ta = $('#pl');
+  $('#pf').onchange = e => { const f = e.target.files && e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { ta.value = String(r.result || ''); }; r.readAsText(f); };
+  $('#pgo').onclick = () => { const { items, skipped, gal } = parsePantryText(ta.value); if (!items.length && !gal) { toast(L('No foods found. Try one per line.', 'No se encontraron comidas. Prueba una por línea.')); return ta.focus(); } const keep = ta.value; pantryPreview(items, skipped, () => { R.pantrylist(); $('#pl').value = keep; }, gal); };
+};
+// a link that carries a typed list: #addlist/<text>
+R.addlist = rest => {
+  let t = ''; try { t = b64d(rest[0] || ''); } catch (e) {}
+  const { items, skipped, gal } = parsePantryText(t);
+  if (!items.length && !gal) { view.innerHTML = `<div class="screen">${bar(L('Add a list', 'Agregar una lista'))}<div class="empty">${L("This link didn't work.", 'Este enlace no funcionó.')}</div></div>`; return; }
+  pantryPreview(items, skipped, () => go('supplies/pantry'), gal);
+};
 
 /* ---------- install: a button for Android (real install prompt) and one for iPhone (Add to Home Screen steps) ---------- */
 let installEvt = null;
@@ -1133,11 +1362,12 @@ function pantryHTML() {
   const useFirst = rows.filter(x => x.q > 0 && x.e && x.e <= soon).sort((a, b) => a.e < b.e ? -1 : 1);
   const mon = e => new Date(e + '-15').toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { month: 'short', year: 'numeric' });
   const item = x => { const meals = x.q * x.m;
-    return `<div class="pan-item${x.q ? '' : ' zero'}"><div class="pan-name"><div class="grow"><b>${esc(x.n)}</b><small>${x.q ? (meals ? `${+meals.toFixed(1)} ${meals === 1 ? L('meal', 'comida') : L('meals', 'comidas')}` : L('not counted', 'no se cuenta')) + (x.e ? ' · ' + L('best by ', 'antes de ') + mon(x.e) : '') : L('Tap + to add', 'Toca + para agregar')}</small></div>
+    return `<div class="pan-item${x.q ? '' : ' zero'}"><div class="pan-name"><div class="grow"><b>${esc(x.n)}</b><small>${x.d ? esc(x.d) + ' · ' : ''}${x.q ? (meals ? `${+meals.toFixed(1)} ${meals === 1 ? L('meal', 'comida') : L('meals', 'comidas')}` : L('not counted', 'no se cuenta')) + (x.e ? ' · ' + L('best by ', 'antes de ') + mon(x.e) : '') : L('Tap + to add', 'Toca + para agregar')}</small></div>
       <div class="stepper sm"><button data-pq="${x.k},-1" aria-label="${L('Less', 'Menos')} ${esc(x.n)}" ${x.q ? '' : 'disabled'}>−</button><span class="val">${x.q}</span><button data-pq="${x.k},1" aria-label="${L('More', 'Más')} ${esc(x.n)}">+</button></div></div>
       ${x.q || x.k.startsWith('own') ? `<details class="pan-edit"><summary>${L('Edit', 'Editar')}</summary><div class="pan-ctl"><label class="pan-f"><small>${L('meals each', 'comidas c/u')}</small><input type="number" inputmode="decimal" step="0.5" min="0" value="${x.m}" data-pm="${x.k}"></label>
         <label class="pan-f"><small>${L('best by', 'antes de')}</small><input type="month" value="${x.e || ''}" data-pe="${x.k}"></label>${x.k.startsWith('own') ? `<button class="round ghost" data-pdel="${x.k}" aria-label="${L('Remove', 'Quitar')} ${esc(x.n)}">${ic('trash')}</button>` : ''}</div></details>` : ''}</div>`; };
-  const ready = rows.filter(x => !x.c && !x.k.startsWith('own')), cook = rows.filter(x => x.c && !x.k.startsWith('own')), own = rows.filter(x => x.k.startsWith('own'));
+  const mineFirst = a => [...a.filter(x => x.k.startsWith('own') || x.q > 0), ...a.filter(x => !x.k.startsWith('own') && !x.q)];
+  const ready = mineFirst(rows.filter(x => !x.c)), cook = mineFirst(rows.filter(x => x.c)), own = [];
   return `<section class="pan-sum"><div class="pan-stat"><span class="qa-ic t-amber">${ic('utensils')}</span><div class="grow"><b>${d1(days)} ${L('days of food', 'días de comida')}</b><small>${d1(nocookDays)} ${L('of them with no cooking', 'sin cocinar')} · ${people} ${people === 1 ? L('person', 'persona') : L('people', 'personas')}</small><div class="track"><i style="width:${pct(days)}%"></i></div></div></div>
     <div class="pan-stat"><span class="qa-ic t-blue">${ic('droplets')}</span><div class="grow"><b>${d1(waterDays)} ${L('days of water', 'días de agua')}</b><small>${L('1 gallon per person per day', '1 galón por persona al día')}</small><div class="track"><i style="width:${pct(waterDays)}%"></i></div></div></div>
     <p class="muted small" style="margin:0">${has ? L('Goal: 14 days. Estimates: 3 meals a person a day. Tap Edit to match your labels.', 'Meta: 14 días. Son cálculos: 3 comidas por persona al día. Toca Editar para ajustar a tus etiquetas.') : L('Tap + next to what you have. That\'s it. The days add up for you.', 'Toca + junto a lo que tienes. Eso es todo. Los días se suman solos.')}</p></section>
@@ -1145,6 +1375,7 @@ function pantryHTML() {
     ${useFirst.length ? `<div class="sub-label">${ic('calendar-check')}${L('Use first', 'Úsalos primero')}</div><div class="list">${useFirst.map(x => `<div class="row"><div class="grow"><b>${esc(x.n)}</b><small>${x.e < now.toISOString().slice(0, 7) ? L('Past date: ', 'Ya pasó la fecha: ') : L('Best by ', 'Consumir antes de ')}${mon(x.e)}</small></div></div>`).join('')}</div>` : ''}
     <div class="sub-label">${ic('package')}${L('Ready to eat', 'Listo para comer')}</div><div class="list">${ready.map(item).join('')}</div>
     <div class="sub-label">${ic('cooking-pot')}${L('Needs cooking', 'Hay que cocinar')}</div><div class="list">${cook.map(item).join('')}</div>
+    <button class="list row" data-go="pantrylist"><span class="lead">${ic('clipboard-list')}</span><div class="grow"><b>${L('Paste or upload a list', 'Pegar o subir una lista')}</b><small>${L('Like "Tuna: 12 cans, 5 oz each"', 'Como "Atún: 12 latas, 5 oz cada una"')}</small></div>${ic('chevron-right', 'chev')}</button>
     <div class="sub-label">${ic('plus')}${L('Something else', 'Otra cosa')}</div>
     ${own.length ? `<div class="list">${own.map(item).join('')}</div>` : ''}
     <div class="card pan-own"><input id="pn" placeholder="${L('e.g. Tortillas, applesauce', 'ej. Tortillas, puré de manzana')}" aria-label="${L('Other food', 'Otra comida')}"><button class="btn small" id="padd">${ic('plus')}${L('Add', 'Agregar')}</button></div>`;

@@ -683,3 +683,8 @@ b.done{color:var(--muted);text-decoration:line-through;text-decoration-thickness
 .inst-ic{flex:none;width:48px;height:48px;border-radius:12px;background:var(--t-blue-soft);color:var(--t-blue);display:grid;place-items:center}.inst-ic svg{width:26px;height:26px}
 .inst-big{width:100%;min-height:58px;font-size:1.1rem}
 .chk.keep input:checked+span,.chk.keep input:checked~span{text-decoration:none;color:var(--ink);opacity:1}
+.sync-top{display:flex;gap:12px;align-items:center}.sync-top .grow{display:grid;gap:2px}.sync-top small{color:var(--muted)}
+.sync.on .sync-top small{color:var(--ok)}
+.pl-ex{margin:0;padding:12px;border-radius:12px;background:var(--sunk);font:inherit;font-size:.88rem;white-space:pre-wrap;color:var(--muted)}
+#pl{width:100%;border:0;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);color:var(--ink);font:inherit;padding:12px;resize:vertical}
+.pl-file{cursor:pointer}

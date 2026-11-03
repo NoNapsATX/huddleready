@@ -1008,13 +1008,28 @@ async function decryptSnap(cfg, row) { const pt = await crypto.subtle.decrypt({ 
 // a snapshot = {key: {v: value, t: when it last changed}}; merging keeps the newer of each key
 function localSnap() { const T = store.get('syncT', {}), o = {}; SYNCED.forEach(k => { const v = store.get(k, null); if (v != null) o[k] = { v, t: T[k] || 0 }; }); return o; }
 function mergeSnap(a, b) { const o = Object.assign({}, a); for (const k in b) if (!o[k] || (b[k].t || 0) > (o[k].t || 0)) o[k] = b[k]; return o; }
-function applySnap(snap) {
+function applySnap(snap, all) {
   const T = store.get('syncT', {}); let changed = false; syncApplying = true;
-  for (const k of SYNCED) { const r = snap[k]; if (r && (r.t || 0) > (T[k] || 0)) { store.set(k, r.v); T[k] = r.t; changed = true; } }
+  for (const k of SYNCED) { const r = snap[k]; if (r && r.v != null && (all || (r.t || 0) > (T[k] || 0))) { store.set(k, r.v); T[k] = r.t || 0; changed = true; } }
   syncApplying = false; store.set('syncT', T);
-  if (changed) { home = store.get('home', home); info = store.get('info', info); const a = document.activeElement; if (!(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !/^#(setup|kids|light)/.test(location.hash)) route(); }
+  if (changed) { home = store.get('home', home); info = store.get('info', info); const a = document.activeElement; if (!(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !/^#(setup|kids|light|join)/.test(location.hash)) route(); }
   return changed;
 }
+// data saved before sync existed has no change time; give it one so the other phones accept it
+function stampMissing() { const T = store.get('syncT', {}); let n = 0; SYNCED.forEach(k => { if (store.get(k, null) != null && !T[k]) { T[k] = Date.now(); n++; } }); if (n) localStorage.setItem('hr-syncT', JSON.stringify(T)); }
+// joining: the family plan (household, contacts) comes from the family copy; lists are combined so nothing on either phone is lost
+function joinMerge(local, remote) {
+  const v = (s, k) => s[k] && s[k].v != null ? s[k].v : null, o = {};
+  SYNCED.forEach(k => { const r = v(remote, k), l = v(local, k); if (r != null || l != null) o[k] = r != null ? r : l; });
+  const lp = v(local, 'pantry'), rp = v(remote, 'pantry');
+  if (lp && rp) { const m = new Map(); (lp.items || []).forEach(x => m.set(x.k, x)); (rp.items || []).forEach(x => { const a = m.get(x.k); m.set(x.k, a && (a.q || 0) > (x.q || 0) ? a : x); }); o.pantry = Object.assign({}, rp, { items: [...m.values()], gal: Math.max(lp.gal || 0, rp.gal || 0) }); }
+  const lk = v(local, 'kit2'), rk = v(remote, 'kit2'); if (lk && rk) o.kit2 = Object.assign({}, lk, rk);
+  const li = v(local, 'info'), ri = v(remote, 'info'); if (li && ri) { o.info = Object.assign({}, ri); for (const k in li) if (o.info[k] == null || o.info[k] === '') o.info[k] = li[k]; }
+  const ln = v(local, 'notes'), rn = v(remote, 'notes'); if (ln && rn) { const seen = new Set(), all = []; rn.concat(ln).forEach(n => { const id = n.t + '|' + n.x; if (!seen.has(id)) { seen.add(id); all.push(n); } }); o.notes = all.sort((a, b) => b.t - a.t).slice(0, 100); }
+  return o;
+}
+const famCode = c => (c.id || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase();
+function parseJoin(t) { const m = String(t || '').match(/#join\/([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)/) || String(t || '').trim().match(/^([A-Za-z0-9_-]{20,})\.([A-Za-z0-9_-]{40,})$/); return m ? m[1] + '.' + m[2] : null; }
 store.hook = k => { if (syncApplying || !SYNCED.includes(k)) return; const T = store.get('syncT', {}); T[k] = Date.now(); localStorage.setItem('hr-syncT', JSON.stringify(T)); if (syncCfg()) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); } };
 async function syncNow() {
   const cfg = syncCfg(); if (!cfg || syncBusy || !navigator.onLine) return;
@@ -1041,54 +1056,75 @@ function syncStatus() {
   return m < 1 ? L('Synced just now', 'Sincronizado hace un momento') : m < 60 ? L(`Synced ${m} min ago`, `Sincronizado hace ${m} min`) : L('Synced ' + new Date(c.at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }), 'Sincronizado ' + new Date(c.at).toLocaleString('es-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }));
 }
 const joinLink = c => location.href.split('#')[0] + '#join/' + c.id + '.' + c.key;
-async function startSync() { const c = { id: b64u(crypto.getRandomValues(new Uint8Array(18))), key: b64u(crypto.getRandomValues(new Uint8Array(32))), at: 0, rev: 0 }; store.set('sync', c); await syncNow(); return syncCfg(); }
+async function startSync() { stampMissing(); const c = { id: b64u(crypto.getRandomValues(new Uint8Array(18))), key: b64u(crypto.getRandomValues(new Uint8Array(32))), at: 0, rev: 0 }; store.set('sync', c); await syncNow(); return syncCfg(); }
 window.addEventListener('online', () => syncNow());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
 setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 90000);
-setTimeout(syncNow, 1500);
+setTimeout(() => { if (syncCfg()) stampMissing(); syncNow(); }, 1500);
 
 R.join = async rest => {
   const [id, key] = String(rest[0] || '').split('.');
-  const fail = t => { view.innerHTML = `<div class="screen">${bar(L('Family sync', 'Sincronizar con la familia'))}<div class="empty">${t}</div><button class="btn wide" data-go="">${L('Home', 'Inicio')}</button></div>`; };
+  const T = t => `<div class="screen">${bar(L('Family sync', 'Sincronizar con la familia'))}${t}</div>`;
+  const fail = t => { view.innerHTML = T(`<div class="empty">${t}</div><button class="btn wide" data-go="">${L('Home', 'Inicio')}</button>`); };
   if (!id || !key) return fail(L("This link didn't work. Ask for a new one.", 'Este enlace no funcionó. Pide uno nuevo.'));
-  view.innerHTML = `<div class="screen">${bar(L('Family sync', 'Sincronizar con la familia'))}<div class="empty">${L('Opening your family plan…', 'Abriendo el plan familiar…')}</div></div>`;
+  const cur = syncCfg();
+  if (cur && cur.id === id) { history.replaceState(null, '', location.pathname); toast(L('This phone is already in your family plan', 'Este teléfono ya está en su plan familiar')); syncNow(); return route(); }
+  view.innerHTML = T(`<div class="empty">${L('Opening your family plan…', 'Abriendo el plan familiar…')}</div>`);
   let snap;
   try { const rows = await rpc('get_plan', { p_id: id }); if (!rows || !rows[0]) return fail(L('This family plan was turned off. Ask for a new link.', 'Este plan familiar se apagó. Pide un enlace nuevo.')); snap = await decryptSnap({ key }, rows[0]); }
   catch (e) { return fail(navigator.onLine ? L("This link didn't work. Ask for a new one.", 'Este enlace no funcionó. Pide uno nuevo.') : L('Connect to the internet once to join, then it works offline.', 'Conéctate a internet una vez para unirte; luego funciona sin internet.')); }
-  const h = (snap.home || {}).v || {}, i = (snap.info || {}).v || {};
-  const rows = [h.family && [L('Family', 'Familia'), h.family], h.cross && [L('Near', 'Cerca de'), h.cross], [L('Household', 'Hogar'), `${h.adults || 0} ${L('adults', 'adultos')}${h.kids ? ', ' + h.kids + ' ' + L('kids', 'niños') : ''}`], i.contact && [L('Out-of-area contact', 'Contacto fuera del área'), i.contact], snap.pantry && [L('Also', 'También'), L('Supplies, pantry and notes', 'Provisiones, despensa y notas')]].filter(Boolean);
+  const h = (snap.home || {}).v || {}, i = (snap.info || {}).v || {}, pi = ((snap.pantry || {}).v || {}).items || [];
+  const rows = [h.family && [L('Family', 'Familia'), h.family], h.cross && [L('Near', 'Cerca de'), h.cross], [L('Household', 'Hogar'), `${h.adults || 0} ${L('adults', 'adultos')}${h.kids ? ', ' + h.kids + ' ' + L('kids', 'niños') : ''}`], i.contact && [L('Out-of-area contact', 'Contacto fuera del área'), i.contact], pi.length && [L('Pantry', 'Despensa'), pi.length + ' ' + L('items', 'artículos')], [L('Family code', 'Código familiar'), famCode({ id })]].filter(Boolean);
+  const link = location.href;
+  const notApp = !isInstalled() && /iPhone|iPad|Android/i.test(navigator.userAgent);
   view.innerHTML = `<div class="screen"><div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div><div class="brand">Huddle Ready</div><div class="muted small">${L('Join your family\'s plan', 'Únete al plan de tu familia')}</div></div></div>
-    <div class="list">${rows.map(([k, v]) => `<div class="row"><div class="grow"><small>${esc(k)}</small><b>${esc(v)}</b></div></div>`).join('')}</div>
+    ${notApp ? `<div class="verdict v1"><b>${L('Is Huddle Ready on your home screen?', '¿Tienes Huddle Ready en tu pantalla de inicio?')}</b><p style="margin:6px 0 10px">${L('This link opened in your web browser, which keeps its own separate copy. To sync the app on your home screen: copy this link, open the app, go to Contacts, tap Share, then Join with a link.', 'Este enlace se abrió en el navegador, que guarda su propia copia aparte. Para sincronizar la app de tu pantalla de inicio: copia este enlace, abre la app, ve a Contactos, toca Compartir y luego Unirme con un enlace.')}</p><button class="btn wide" id="jcopy">${ic('copy')}${L('Copy this link', 'Copiar este enlace')}</button></div>` : ''}
+    <div class="list">${rows.map(([k, v]) => `<div class="row"><div class="grow"><small>${esc(k)}</small><b>${esc(String(v))}</b></div></div>`).join('')}</div>
     <div class="tipbox">${ic('refresh-cw')}<p>${L('Changes on either phone show up on the other whenever both have internet.', 'Los cambios en un teléfono aparecen en el otro cuando los dos tienen internet.')}</p></div>
-    ${home ? `<div class="verdict v1"><b>${L('This replaces the plan on this phone', 'Esto reemplaza el plan de este teléfono')}</b></div>` : ''}
-    <button class="btn wide" id="jy">${L('Join and keep in sync', 'Unirme y sincronizar')}</button><button class="btn ghost wide" id="jn">${L('Cancel', 'Cancelar')}</button></div>`;
-  $('#jy').onclick = () => { store.set('syncT', {}); applySnap(snap); home = store.get('home', null); info = store.get('info', {}); if (home && !home.skipped) { home.skipped = []; store.set('home', home); }
-    store.set('sync', { id, key, at: Date.now(), rev: 0 }); history.replaceState(null, '', location.pathname); toast(L('Joined. Your phones now stay in sync.', 'Listo. Sus teléfonos ahora se sincronizan.')); syncNow(); route(); };
+    ${home ? `<div class="tipbox">${ic('layers')}<p>${cur ? L('This phone was in a different family plan (code ' + famCode(cur) + '). Joining moves it to this one. ', 'Este teléfono estaba en otro plan familiar (código ' + famCode(cur) + '). Al unirte se cambia a este. ') : ''}${L('Your pantry, supplies and notes on this phone are combined with the family\'s, so nothing is lost. Household and contacts come from the family plan.', 'La despensa, provisiones y notas de este teléfono se combinan con las de la familia, así que no se pierde nada. El hogar y los contactos vienen del plan familiar.')}</p></div>` : ''}
+    <button class="btn wide" id="jy">${notApp ? L('Join in this browser instead', 'Unirme en este navegador') : L('Join and keep in sync', 'Unirme y sincronizar')}</button><button class="btn ghost wide" id="jn">${L('Cancel', 'Cancelar')}</button></div>`;
+  const jc = $('#jcopy'); if (jc) jc.onclick = async () => { try { await navigator.clipboard.writeText(link); toast(L('Link copied. Now open the app.', 'Enlace copiado. Ahora abre la app.')); } catch (e) { prompt('', link); } };
+  $('#jy').onclick = () => {
+    const merged = joinMerge(localSnap(), snap);
+    store.set('sync', null);
+    for (const k of SYNCED) if (merged[k] != null) store.set(k, merged[k]);  // stamps every key as changed now, so the combined copy goes back up
+    home = store.get('home', null); info = store.get('info', {}); if (home && !home.skipped) { home.skipped = []; store.set('home', home); }
+    store.set('sync', { id, key, at: 0, rev: 0 }); history.replaceState(null, '', location.pathname);
+    toast(L('Joined. Your phones now stay in sync.', 'Listo. Sus teléfonos ahora se sincronizan.')); syncNow(); route(); };
   $('#jn').onclick = () => { history.replaceState(null, '', location.pathname + (home ? '' : '#setup')); route(); };
 };
+function joinBoxHTML() {
+  return `<details class="got" id="jbox"><summary>${L('Join with a link', 'Unirme con un enlace')}</summary><div style="display:grid;gap:8px;padding-top:8px">
+    <p class="muted small" style="margin:0">${L('Paste the sync link from your family member\'s phone.', 'Pega el enlace de sincronización del teléfono de tu familiar.')}</p>
+    <input id="jlink" type="url" inputmode="url" autocomplete="off" placeholder="${L('Paste the link here', 'Pega el enlace aquí')}" aria-label="${L('Sync link', 'Enlace de sincronización')}">
+    <button class="btn wide" id="jgo">${L('Join', 'Unirme')}</button></div></details>`;
+}
 function syncCardHTML() {
   const c = syncCfg();
   if (!c) return `<section class="card sync"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Keep our phones in sync', 'Mantener nuestros teléfonos sincronizados')}</b><small>${L('Contacts, supplies, pantry and notes update on both phones automatically.', 'Contactos, provisiones, despensa y notas se actualizan solos en los dos teléfonos.')}</small></div></div>
-    <button class="btn wide" id="syon">${ic('refresh-cw')}${L('Turn on sync', 'Activar sincronización')}</button>
+    <button class="btn wide" id="syon">${ic('refresh-cw')}${L('Start sync on this phone', 'Iniciar sincronización en este teléfono')}</button>
+    <p class="muted small" style="margin:0">${L('Only one phone starts it. Every other phone joins with the link it sends.', 'Solo un teléfono la inicia. Los demás se unen con el enlace que envía.')}</p>
+    ${joinBoxHTML()}
     <p class="muted small" style="margin:0">${L('Your plan is locked (encrypted) on this phone before it is saved online. Only phones with your family link can unlock it.', 'Tu plan se cierra con llave (cifrado) en este teléfono antes de guardarse en internet. Solo los teléfonos con su enlace familiar lo pueden abrir.')}</p></section>`;
-  return `<section class="card sync on"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Sync is on', 'Sincronización activada')}</b><small id="syncst">${syncStatus()}</small></div></div>
+  return `<section class="card sync on"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Sync is on', 'Sincronización activada')} · ${L('code', 'código')} <span class="famcode">${famCode(c)}</span></b><small id="syncst">${syncStatus()}</small></div></div>
+    <p class="muted small" style="margin:0">${L('Every phone in your family should show the same code.', 'Todos los teléfonos de la familia deben mostrar el mismo código.')}</p>
     <button class="btn wide" id="sysend">${ic('share-2')}${L('Send the sync link to your family', 'Enviar el enlace a tu familia')}</button>
-    <button class="btn ghost wide" id="sycopy">${ic('copy')}${L('Copy the sync link', 'Copiar el enlace')}</button>
+    <div class="grid2"><button class="btn ghost" id="sycopy">${ic('copy')}${L('Copy link', 'Copiar enlace')}</button><button class="btn ghost" id="synow">${ic('refresh-cw')}${L('Sync now', 'Sincronizar ya')}</button></div>
+    ${joinBoxHTML()}
     <details class="got"><summary>${L('Turn off', 'Apagar')}</summary><div style="display:grid;gap:8px;padding-top:8px"><button class="btn ghost wide" id="syoff">${L('Stop syncing on this phone', 'Dejar de sincronizar en este teléfono')}</button><button class="btn ghost wide" id="sydel">${L('Delete the online copy for everyone', 'Borrar la copia en internet para todos')}</button></div></details></section>`;
 }
 function bindSyncCard() {
   const on = $('#syon'); if (on) on.onclick = async () => { on.disabled = true; on.textContent = L('Turning on…', 'Activando…'); await startSync(); R.share(); };
+  const jg = $('#jgo'); if (jg) jg.onclick = () => { const j = parseJoin($('#jlink').value); if (!j) { toast(L("That doesn't look like a sync link", 'Eso no parece un enlace de sincronización')); return $('#jlink').focus(); } go('join/' + j); };
   const c = syncCfg(); if (!c) return;
-  const msg = L("Join our family's Huddle Ready plan. Open this link on your phone and tap Join. Keep it private: it unlocks our plan.", 'Únete al plan de Huddle Ready de nuestra familia. Abre este enlace en tu teléfono y toca Unirme. Es privado: abre nuestro plan.');
-  const copy = async () => { try { await navigator.clipboard.writeText(msg + '\n' + joinLink(c)); toast(L('Link copied', 'Enlace copiado')); } catch (e) { prompt('', joinLink(c)); } };
+  const msg = L("Join our family's Huddle Ready plan. Open Huddle Ready, go to Contacts, tap Share, then Join with a link, and paste this. Keep it private: it unlocks our plan.", 'Únete al plan de Huddle Ready de nuestra familia. Abre Huddle Ready, ve a Contactos, toca Compartir, luego Unirme con un enlace, y pega esto. Es privado: abre nuestro plan.');
+  const copy = async () => { try { await navigator.clipboard.writeText(joinLink(c)); toast(L('Link copied', 'Enlace copiado')); } catch (e) { prompt('', joinLink(c)); } };
   $('#sycopy').onclick = copy;
-  $('#sysend').onclick = () => { if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg, url: joinLink(c) }).catch(() => {}); else copy(); };
+  $('#synow').onclick = async () => { const st = $('#syncst'); if (st) st.textContent = L('Syncing…', 'Sincronizando…'); stampMissing(); await syncNow(); toast(store.get('syncErr', 0) > (syncCfg() || {}).at ? L('Could not reach the server', 'No se pudo conectar') : L('Synced', 'Sincronizado')); };
+  $('#sysend').onclick = () => { if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg + '\n', url: joinLink(c) }).catch(() => {}); else copy(); };
   $('#syoff').onclick = () => { store.set('sync', null); toast(L('Sync is off on this phone', 'Sincronización apagada en este teléfono')); R.share(); };
   const d = $('#sydel'); let armed = false; d.onclick = async () => { if (!armed) { armed = true; d.textContent = L('Tap again to delete for everyone', 'Toca otra vez para borrar para todos'); return; } try { await rpc('delete_plan', { p_id: c.id }); } catch (e) {} store.set('sync', null); toast(L('Online copy deleted', 'Copia en internet borrada')); R.share(); };
 }
-
-
-
 
 /* ---------- paste or upload a pantry list ("Tuna: 12 cans, 5 oz each") and turn it into pantry items ---------- */
 // meals per unit: one "meal" = one person's meal. These are rough, label-based estimates people can edit.

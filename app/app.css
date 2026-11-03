@@ -756,3 +756,5 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))
 .live2 .live-head b{white-space:nowrap}.live2 #elapsed{white-space:nowrap;font-size:.92rem}
 .live2 .btn{white-space:nowrap;padding:8px 12px;font-size:.88rem}
 @media (max-width:360px){.kctl{gap:6px}.kbtn{width:42px;height:42px}.ksteps{gap:4px}.kstep{width:34px;height:34px;font-size:.9rem}}
+.famcode{font-family:ui-monospace,Menlo,monospace;letter-spacing:.12em;background:var(--chip,#eef3ee);padding:1px 6px;border-radius:6px}
+.sync .got{border-top:0}.sync .got summary{padding:6px 2px}.sync input[type=url]{width:100%;box-sizing:border-box;border:0;background:var(--sunk);border-radius:12px;padding:14px 12px;font:inherit;color:inherit}.sync input[type=url]::placeholder{color:var(--faint)}

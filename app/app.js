@@ -6,7 +6,7 @@ const view = $('#view'), kids = $('#kids'), kview = $('#kview');
 /* ---------- storage ---------- */
 const store = {
   get(k, d) { try { const v = localStorage.getItem('hr-' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem('hr-' + k, JSON.stringify(v)); } catch (e) {} if (store.hook) store.hook(k); }
+  set(k, v) { if (store.pre) store.pre(k, v); try { localStorage.setItem('hr-' + k, JSON.stringify(v)); } catch (e) {} if (store.hook) store.hook(k); }
 };
 
 /* ---------- language ---------- */
@@ -214,7 +214,7 @@ function skillStrip(out) {
 R.home = () => {
   const o = outage(), u = util();
   const syncOn = !!(typeof syncCfg === 'function' && syncCfg());
-  const top = `<div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div class="grow"><div class="brand">${greet()}</div><div class="chips-row"><span class="status ${swOK ? 'ok' : ''}" id="status"><i></i><span>${swOK ? L('Works offline', 'Funciona sin internet') : L('Saving for offline…', 'Guardando para usar sin internet…')}</span></span>${syncOn ? `<span class="status ok">${ic('refresh-cw')}<span>${L('Synced', 'Sincronizado')}</span></span>` : ''}</div></div>
+  const top = `<div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div class="grow"><div class="brand">${greet()}</div><div class="chips-row"><span class="status ${swOK ? 'ok' : ''}" id="status"><i></i><span>${swOK ? L('Works offline', 'Funciona sin internet') : L('Saving for offline…', 'Guardando para usar sin internet…')}</span></span>${syncOn ? (syncStale() ? `<span class="status warn">${ic('refresh-cw')}<span>${L('Not synced', 'Sin sincronizar')}</span></span>` : `<span class="status ok">${ic('refresh-cw')}<span>${L('Synced', 'Sincronizado')}</span></span>`) : ''}</div></div>
     <button class="lang-chip" id="lang" lang="${lang === 'es' ? 'en' : 'es'}" aria-label="${L('Cambiar a español', 'Switch to English')}">${ic('languages')}${L('ES', 'EN')}</button><button class="icon-btn" data-go="details" aria-label="${L('Our info and settings', 'Nuestra info y ajustes')}">${ic('settings')}</button></div>`;
   const where = [info.building && L('Bldg ', 'Edif. ') + info.building, info.unit && L('Unit ', 'Apto. ') + info.unit].filter(Boolean).join(', ');
   const tile = (go, i, t, tone, sub) => `<button class="tl t-${tone}" data-go="${go}"><span class="qa-ic">${ic(i)}</span><span class="tile-t">${t}</span>${sub ? `<small>${sub}</small>` : ''}</button>`;
@@ -252,6 +252,7 @@ R.home = () => {
           <div class="grow"><b>${r.done === r.total ? L("You're ready", 'Están listos') : L('Your readiness', 'Su preparación')}</b><small>${r.done === r.total ? L('Keep it fresh with the twice-a-year check.', 'Manténganlo al día con la revisión de cada seis meses.') : L(`${r.total - r.done} steps to go`, `Faltan ${r.total - r.done} pasos`)}</small></div><button class="linkish" data-go="ready">${L('See all', 'Ver todo')}</button></div>
         ${r.next ? `<button class="next" data-go="${r.next[3]}"><span class="qa-ic">${ic(r.next[4])}</span><div><small>${L('Next step', 'Siguiente paso')}</small><b>${r.next[2]}</b></div>${ic('chevron-right', 'chev')}</button>` : ''}
       </section>
+      ${syncStale() ? `<button class="next stale" id="synchome"><span class="qa-ic t-amber">${ic('refresh-cw')}</span><div><small>${L(`Phones not synced in ${syncStale()} days`, `Teléfonos sin sincronizar en ${syncStale()} días`)}</small><b>${L('Tap to sync now. Open the app on the other phones with internet too.', 'Toca para sincronizar. Abre la app en los otros teléfonos con internet también.')}</b></div>${ic('chevron-right', 'chev')}</button>` : ''}
       <div class="sec-h">${L('At a glance', 'De un vistazo')}</div>
       <div class="stats">${stat('supplies/pantry', 'utensils', 'green', hasPantry ? d1(ps.days) + L(' days', ' días') : L('Add', 'Agregar'), L('of food', 'de comida'))}${stat('supplies/pantry', 'droplets', 'blue', d1(ps.waterDays) + L(' days', ' días'), L('of water', 'de agua'))}${stat('calls', 'phone', 'amber', nContacts || L('Add', 'Agregar'), L('our contacts', 'contactos'))}</div>
       <div class="sec-h">${L('Get ready', 'Prepárense')}</div>
@@ -263,6 +264,7 @@ R.home = () => {
   $('#lang').onclick = () => { setLang(lang === 'es' ? 'en' : 'es'); route(); };
   if (o) bindDayCheck(); else bindInstallCard();
   const nd = $('#nowdone'); if (nd) nd.onclick = () => { const oo = outage(); const n = dayN(oo); if (!oo.day || oo.day.n !== n) oo.day = { n, t: {} }; oo.day.t[nd.dataset.dk] = 1; store.set('outage', oo); route(); };
+  const sh = $('#synchome'); if (sh) sh.onclick = async () => { sh.disabled = true; stampMissing(); await syncNow(); toast(syncStale() ? L('Could not reach the server', 'No se pudo conectar') : L('Synced', 'Sincronizado')); R.home(); };
   const sos = $('#sos'); if (sos) sos.onclick = () => { const now = Date.now(); store.set('outage', { start: now, step: 0, done: false }); store.set('outTime', now); go('outage'); };
   const end = $('#end'); if (end) { let armed = false; end.onclick = () => { if (!armed) { armed = true; end.textContent = L('Tap again', 'Toca otra vez'); setTimeout(() => { armed = false; if (end.isConnected) end.textContent = L('Power is back', 'Ya volvió la luz'); }, 3000); return; } store.set('outage', null); document.documentElement.classList.remove('night'); toast(L('Glad it\'s back. Check food before eating.', 'Qué bueno. Revisa la comida antes de comer.')); route(); }; }
   route.tick = setInterval(() => { const o = outage(); if (!o) return; const e = $('#elapsed'), f = $('#fridge'); const left = 4 * 3600000 - (Date.now() - (outTime() || o.start)); if (e) e.textContent = fmtDur(Date.now() - o.start); if (f) f.textContent = left > 0 ? fmtDur(left) : L('Past', 'Pasó'); }, 30000);
@@ -419,7 +421,7 @@ function pantryNowHTML() {
     ${cook.length ? `<details class="got"><summary>${L('Needs cooking (camp stove, outside)', 'Hay que cocinar (estufa de campamento, afuera)')} · ${cook.length}</summary><div class="list">${cook.map(row).join('')}</div></details>` : ''}`;
 }
 function bindPantryNow(redraw) {
-  view.querySelectorAll('[data-used]').forEach(b => b.onclick = () => { const P = store.get('pantry', { items: [], gal: 0 }), x = P.items.find(i => i.k === b.dataset.used); if (x) { x.q = Math.max(0, x.q - 1); store.set('pantry', P); } const y = scrollY; redraw(); scrollTo(0, y); toast(L('Logged', 'Anotado')); });
+  view.querySelectorAll('[data-used]').forEach(b => b.onclick = () => { const P = store.get('pantry', { items: [], gal: 0 }), x = P.items.find(i => i.k === b.dataset.used); let out = false; if (x) { out = x.q === 1; x.q = Math.max(0, x.q - 1); store.set('pantry', P); if (out) addShop(x.n, 'pantry'); } const y = scrollY; redraw(); scrollTo(0, y); toast(out ? L('Out of it. Added to the shopping list.', 'Se acabó. Se agregó a la lista de compras.') : L('Logged', 'Anotado')); });
 }
 R.food = () => {
   function local(ms) { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
@@ -808,6 +810,8 @@ R.supplies = (rest) => {
       `<p class="muted small" style="padding:0 4px">${L('Saved on this phone. To-dos like signing up for alerts are in Your readiness on the home screen.', 'Se guarda en este teléfono. Pendientes como inscribirse a las alertas están en Su preparación en la pantalla de inicio.')}</p>`;
   } else if (supTab === 'pantry') {
     body = pantryHTML();
+  } else if (supTab === 'shop') {
+    body = shopHTML();
   } else {
     const c = Object.assign(calcDefault(), store.get('calc', {})); const p = c.a + c.k;
     const rows = [[L('Drinking water', 'Agua para tomar'), p * c.days + L(' gal', ' gal'), L('1 gallon per person per day', '1 galón por persona al día')], [L('Meals', 'Comidas'), p * c.days * 3, L('3 per person per day', '3 por persona al día')], [L("Kids' snacks", 'Botanas para niños'), c.k * c.days * 2, L('2 a day per child', '2 al día por niño')], [L('Diapers or pull-ups', 'Pañales'), c.d * c.days * 6, L('About 6 a day', 'Unos 6 al día')], [L('Flashlights or headlamps', 'Linternas o lámparas de cabeza'), p, L('1 per person', '1 por persona')], [L('Power banks', 'Baterías portátiles'), Math.max(1, c.a), L('1 per adult', '1 por adulto')], [L('Prescriptions', 'Recetas'), c.days + L(' days', ' días'), L('Each person', 'Cada persona')], [L('Cash', 'Efectivo'), '$' + Math.max(200, p * 50), L('Small bills', 'Billetes chicos')]];
@@ -815,8 +819,9 @@ R.supplies = (rest) => {
     const st = (k, t) => `<div class="stepper" style="padding:10px 16px;border-bottom:1px solid var(--line)"><b style="flex:1">${t}</b><button data-c="${k},-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val" style="font-size:1.3rem">${c[k]}</span><button data-c="${k},1" aria-label="${L('More', 'Más')}">+</button></div>`;
     body = `<div class="list">${st('a', L('Adults', 'Adultos'))}${st('k', L('Children', 'Niños'))}${st('d', L('In diapers', 'Con pañal'))}${st('days', L('Days', 'Días'))}</div><div class="list calc"><table>${rows.map(r => `<tr><td>${r[0]}<small>${r[2]}</small></td><td class="n">${r[1]}</td></tr>`).join('')}</table></div>`;
   }
-  view.innerHTML = `<div class="screen">${bar(L('Supplies', 'Provisiones'))}${outage() ? `<button class="sk-btn" data-go="food"><span class="qa-ic t-amber">${ic('refrigerator')}</span><div class="grow"><b>${L('Food clock', 'Reloj de comida')}</b><small>${L('What to eat first right now', 'Qué comer primero ahorita')}</small></div>${ic('chevron-right', 'chev')}</button>` : ''}<div class="seg"><button aria-pressed="${supTab === 'pantry'}" data-t="pantry">${L('Pantry', 'Despensa')}</button><button aria-pressed="${supTab === 'list'}" data-t="list">${L('Checklist', 'Lista')}</button><button aria-pressed="${supTab === 'calc'}" data-t="calc">${L('How much', 'Cuánto')}</button></div>${body}</div>`;
+  view.innerHTML = `<div class="screen">${bar(L('Supplies', 'Provisiones'))}${outage() ? `<button class="sk-btn" data-go="food"><span class="qa-ic t-amber">${ic('refrigerator')}</span><div class="grow"><b>${L('Food clock', 'Reloj de comida')}</b><small>${L('What to eat first right now', 'Qué comer primero ahorita')}</small></div>${ic('chevron-right', 'chev')}</button>` : ''}<div class="seg"><button aria-pressed="${supTab === 'pantry'}" data-t="pantry">${L('Pantry', 'Despensa')}</button><button aria-pressed="${supTab === 'shop'}" data-t="shop">${L('Shopping', 'Compras')}${(n => n ? ` <span class="seg-n">${n}</span>` : '')(shopGet().items.filter(x => !x.done).length)}</button><button aria-pressed="${supTab === 'list'}" data-t="list">${L('Checklist', 'Lista')}</button><button aria-pressed="${supTab === 'calc'}" data-t="calc">${L('How much', 'Cuánto')}</button></div>${body}</div>`;
   if (supTab === 'pantry') bindPantry(() => R.supplies());
+  if (supTab === 'shop') bindShop(() => R.supplies());
   view.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { supTab = b.dataset.t; R.supplies(); });
   const em = $('#essmore'); if (em) em.onclick = () => { store.set('essAll', true); R.supplies(); };
   const fb = $('#full'); if (fb) fb.onclick = () => { store.set('kitFull', !store.get('kitFull', false)); R.supplies(); };
@@ -992,7 +997,7 @@ R.setup = (rest) => {
 /* ---------- family sync: the plan is encrypted on the phone (AES-GCM) and stored as scrambled text.
    The key travels only inside the family's private link (after the #), so the server can never read it. ---------- */
 const SYNC_URL = 'https://phtfogprpnriunzwjrwr.supabase.co/rest/v1/rpc/', SYNC_KEY = 'sb_publishable_RorZQqPjHeKZE3uHLOgTzg_acJ-8xFy';
-const SYNCED = ['home', 'info', 'kit2', 'pantry', 'notes'];
+const SYNCED = ['home', 'info', 'kit2', 'pantry', 'notes', 'shop'];
 const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const ub64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
 const syncCfg = () => store.get('sync', null);
@@ -1005,32 +1010,61 @@ async function rpc(fn, body) {
 async function syncKey(k) { return crypto.subtle.importKey('raw', ub64u(k), 'AES-GCM', false, ['encrypt', 'decrypt']); }
 async function encryptSnap(cfg, snap) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await syncKey(cfg.key), new TextEncoder().encode(JSON.stringify(snap))); return { data: b64u(ct), iv: b64u(iv) }; }
 async function decryptSnap(cfg, row) { const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ub64u(row.iv) }, await syncKey(cfg.key), ub64u(row.data)); return JSON.parse(new TextDecoder().decode(pt)); }
-// a snapshot = {key: {v: value, t: when it last changed}}; merging keeps the newer of each key
-function localSnap() { const T = store.get('syncT', {}), o = {}; SYNCED.forEach(k => { const v = store.get(k, null); if (v != null) o[k] = { v, t: T[k] || 0 }; }); return o; }
-function mergeSnap(a, b) { const o = Object.assign({}, a); for (const k in b) if (!o[k] || (b[k].t || 0) > (o[k].t || 0)) o[k] = b[k]; return o; }
-function applySnap(snap, all) {
-  const T = store.get('syncT', {}); let changed = false; syncApplying = true;
-  for (const k of SYNCED) { const r = snap[k]; if (r && r.v != null && (all || (r.t || 0) > (T[k] || 0))) { store.set(k, r.v); T[k] = r.t || 0; changed = true; } }
-  syncApplying = false; store.set('syncT', T);
+
+/* who is this phone: a random id plus the name people give it ("Anna's phone") */
+const devId = () => { let d = store.get('devId', ''); if (!d) { d = b64u(crypto.getRandomValues(new Uint8Array(6))); store.set('devId', d); } return d; };
+const devName = () => store.get('devName', '');
+const byMe = () => ({ d: devId(), n: devName() });
+const whoName = b => !b ? L('a family phone', 'un teléfono de la familia') : b.d === devId() ? L('this phone', 'este teléfono') : (b.n || L('another phone', 'otro teléfono'));
+const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? L('just now', 'ahorita') : m < 60 ? L(`${m} min ago`, `hace ${m} min`) : m < 1440 ? L(`${Math.round(m / 60)} h ago`, `hace ${Math.round(m / 60)} h`) : L(`${Math.round(m / 1440)} days ago`, `hace ${Math.round(m / 1440)} días`); };
+
+/* lists are synced item by item: every item keeps its own change time, and removing an item leaves a dated marker,
+   so if both phones change the pantry while offline, both sets of changes are kept */
+const ITEMIZED = {
+  pantry: { split: v => { const o = { _gal: (v && v.gal) || 0 }; ((v && v.items) || []).forEach(x => o['i:' + x.k] = x); return o; }, join: (m, ks) => ({ gal: m._gal || 0, items: ks.filter(k => k.startsWith('i:') && m[k] !== undefined).map(k => m[k]) }) },
+  kit2: { split: v => Object.assign({}, v || {}), join: (m, ks) => { const o = {}; ks.forEach(k => { if (m[k] !== undefined) o[k] = m[k]; }); return o; } },
+  notes: { split: v => { const o = {}; (v || []).forEach(n => o[n.t + '|' + n.x] = n); return o; }, join: (m, ks) => ks.filter(k => m[k] !== undefined).map(k => m[k]).sort((a, b) => b.t - a.t).slice(0, 100) },
+  shop: { split: v => { const o = {}; ((v && v.items) || []).forEach(x => o[x.id] = x); return o; }, join: (m, ks) => ({ items: ks.filter(k => m[k] !== undefined).map(k => m[k]) }) }
+};
+const canon = o => Array.isArray(o) ? '[' + o.map(canon).join(',') + ']' : o && typeof o === 'object' ? '{' + Object.keys(o).sort().map(k => JSON.stringify(k) + ':' + canon(o[k])).join(',') + '}' : JSON.stringify(o === undefined ? null : o);
+// runs before every save: dates each list item that changed, and marks removed ones
+store.pre = (k, v) => {
+  if (syncApplying || !ITEMIZED[k]) return;
+  const S = ITEMIZED[k], a = S.split(store.get(k, null)), b = S.split(v), I = store.get('syncI', {}), m = I[k] || (I[k] = {}), now = Date.now(), old = now - 120 * 864e5;
+  new Set([...Object.keys(a), ...Object.keys(b)]).forEach(ik => { if (canon(a[ik]) !== canon(b[ik])) m[ik] = now; });
+  for (const ik in m) if (b[ik] === undefined && m[ik] < old) delete m[ik];  // forget removal markers after 4 months
+  localStorage.setItem('hr-syncI', JSON.stringify(I));
+};
+store.hook = k => {
+  if (syncApplying || !SYNCED.includes(k)) return;
+  const T = store.get('syncT', {}), B = store.get('syncB', {}); T[k] = Date.now(); B[k] = byMe();
+  localStorage.setItem('hr-syncT', JSON.stringify(T)); localStorage.setItem('hr-syncB', JSON.stringify(B));
+  if (syncCfg()) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); }
+};
+// a snapshot = {key: {v: value, t: when it last changed, by: which phone, i: per-item change times}}
+function localSnap() { const T = store.get('syncT', {}), B = store.get('syncB', {}), I = store.get('syncI', {}), o = {}; SYNCED.forEach(k => { const v = store.get(k, null); if (v != null) { o[k] = { v, t: T[k] || 0 }; if (B[k]) o[k].by = B[k]; if (ITEMIZED[k]) o[k].i = I[k] || {}; } }); return o; }
+function mergeKey(k, l, r) {
+  if (!l) return r; if (!r) return l;
+  const lt = l.t || 0, rt = r.t || 0, newer = rt >= lt ? r : l;
+  if (!ITEMIZED[k]) return newer;
+  const S = ITEMIZED[k], la = S.split(l.v), ra = S.split(r.v), li = l.i || {}, ri = r.i || {}, m = {}, i = {};
+  const when = (items, meta, keyT, ik) => ik in meta ? meta[ik] : items[ik] !== undefined ? keyT : -1;
+  const ks = [...new Set([...Object.keys(ra), ...Object.keys(la), ...Object.keys(ri), ...Object.keys(li)])];
+  for (const ik of ks) { const a = when(la, li, lt, ik), b = when(ra, ri, rt, ik), win = b >= a ? ra : la; if (win[ik] !== undefined) m[ik] = win[ik]; const t = Math.max(a, b); if (t >= 0) i[ik] = t; }
+  const o = { v: S.join(m, ks), t: Math.max(lt, rt), i }; if (newer.by) o.by = newer.by; return o;
+}
+function mergeSnap(a, b) { const o = {}; SYNCED.forEach(k => { const x = mergeKey(k, a[k], b[k]); if (x) o[k] = x; }); return o; }
+function applySnap(snap) {
+  const T = store.get('syncT', {}), B = store.get('syncB', {}), I = store.get('syncI', {}); let changed = false; syncApplying = true;
+  for (const k of SYNCED) { const r = snap[k]; if (!r || r.v == null) continue;
+    if (canon(r.v) !== canon(store.get(k, null))) { store.set(k, r.v); changed = true; }
+    T[k] = r.t || 0; if (r.by) B[k] = r.by; if (r.i) I[k] = r.i; }
+  syncApplying = false; store.set('syncT', T); store.set('syncB', B); store.set('syncI', I);
   if (changed) { home = store.get('home', home); info = store.get('info', info); const a = document.activeElement; if (!(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !/^#(setup|kids|light|join)/.test(location.hash)) route(); }
   return changed;
 }
 // data saved before sync existed has no change time; give it one so the other phones accept it
-function stampMissing() { const T = store.get('syncT', {}); let n = 0; SYNCED.forEach(k => { if (store.get(k, null) != null && !T[k]) { T[k] = Date.now(); n++; } }); if (n) localStorage.setItem('hr-syncT', JSON.stringify(T)); }
-// joining: the family plan (household, contacts) comes from the family copy; lists are combined so nothing on either phone is lost
-function joinMerge(local, remote) {
-  const v = (s, k) => s[k] && s[k].v != null ? s[k].v : null, o = {};
-  SYNCED.forEach(k => { const r = v(remote, k), l = v(local, k); if (r != null || l != null) o[k] = r != null ? r : l; });
-  const lp = v(local, 'pantry'), rp = v(remote, 'pantry');
-  if (lp && rp) { const m = new Map(); (lp.items || []).forEach(x => m.set(x.k, x)); (rp.items || []).forEach(x => { const a = m.get(x.k); m.set(x.k, a && (a.q || 0) > (x.q || 0) ? a : x); }); o.pantry = Object.assign({}, rp, { items: [...m.values()], gal: Math.max(lp.gal || 0, rp.gal || 0) }); }
-  const lk = v(local, 'kit2'), rk = v(remote, 'kit2'); if (lk && rk) o.kit2 = Object.assign({}, lk, rk);
-  const li = v(local, 'info'), ri = v(remote, 'info'); if (li && ri) { o.info = Object.assign({}, ri); for (const k in li) if (o.info[k] == null || o.info[k] === '') o.info[k] = li[k]; }
-  const ln = v(local, 'notes'), rn = v(remote, 'notes'); if (ln && rn) { const seen = new Set(), all = []; rn.concat(ln).forEach(n => { const id = n.t + '|' + n.x; if (!seen.has(id)) { seen.add(id); all.push(n); } }); o.notes = all.sort((a, b) => b.t - a.t).slice(0, 100); }
-  return o;
-}
-const famCode = c => (c.id || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase();
-function parseJoin(t) { const m = String(t || '').match(/#join\/([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)/) || String(t || '').trim().match(/^([A-Za-z0-9_-]{20,})\.([A-Za-z0-9_-]{40,})$/); return m ? m[1] + '.' + m[2] : null; }
-store.hook = k => { if (syncApplying || !SYNCED.includes(k)) return; const T = store.get('syncT', {}); T[k] = Date.now(); localStorage.setItem('hr-syncT', JSON.stringify(T)); if (syncCfg()) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); } };
+function stampMissing() { const T = store.get('syncT', {}), B = store.get('syncB', {}); let n = 0; SYNCED.forEach(k => { if (store.get(k, null) != null && !T[k]) { T[k] = Date.now(); B[k] = byMe(); n++; } }); if (n) { localStorage.setItem('hr-syncT', JSON.stringify(T)); localStorage.setItem('hr-syncB', JSON.stringify(B)); } }
 async function syncNow() {
   const cfg = syncCfg(); if (!cfg || syncBusy || !navigator.onLine) return;
   syncBusy = true;
@@ -1038,7 +1072,7 @@ async function syncNow() {
     for (let tries = 0; tries < 3; tries++) {
       const rows = await rpc('get_plan', { p_id: cfg.id }), row = rows && rows[0];
       let snap = localSnap(), base = 0;
-      if (row) { const remote = await decryptSnap(cfg, row); applySnap(remote); snap = mergeSnap(localSnap(), remote); base = row.rev; if (JSON.stringify(snap) === JSON.stringify(remote)) { store.set('sync', Object.assign(cfg, { at: Date.now(), rev: row.rev })); break; } }
+      if (row) { const remote = await decryptSnap(cfg, row); snap = mergeSnap(snap, remote); applySnap(snap); base = row.rev; if (canon(snap) === canon(remote)) { store.set('sync', Object.assign(cfg, { at: Date.now(), rev: row.rev })); break; } }
       const enc = await encryptSnap(cfg, snap), rev = await rpc('put_plan', { p_id: cfg.id, p_data: enc.data, p_iv: enc.iv, p_base_rev: base });
       if (rev > 0) { store.set('sync', Object.assign(cfg, { at: Date.now(), rev })); break; }
     }
@@ -1047,6 +1081,26 @@ async function syncNow() {
   syncBusy = false;
   const st = $('#syncst'); if (st) st.textContent = syncStatus();
 }
+// joining: the family plan (household, contacts) comes from the family copy; lists are combined so nothing on either phone is lost.
+// When both phones have the same pantry item, the larger amount is kept.
+function joinMerge(local, remote) {
+  const v = (s, k) => s[k] && s[k].v != null ? s[k].v : null, o = {};
+  SYNCED.forEach(k => { const r = v(remote, k), l = v(local, k); if (r != null || l != null) o[k] = r != null ? r : l; });
+  const lp = v(local, 'pantry'), rp = v(remote, 'pantry');
+  if (lp && rp) { const m = new Map(); (lp.items || []).forEach(x => m.set(x.k, x)); (rp.items || []).forEach(x => { const a = m.get(x.k); m.set(x.k, a && (a.q || 0) > (x.q || 0) ? a : x); }); o.pantry = Object.assign({}, rp, { items: [...m.values()], gal: Math.max(lp.gal || 0, rp.gal || 0) }); }
+  const lk = v(local, 'kit2'), rk = v(remote, 'kit2'); if (lk && rk) o.kit2 = Object.assign({}, lk, rk);
+  const li = v(local, 'info'), ri = v(remote, 'info'); if (li && ri) { o.info = Object.assign({}, ri); for (const k in li) if (o.info[k] == null || o.info[k] === '') o.info[k] = li[k]; }
+  const ln = v(local, 'notes'), rn = v(remote, 'notes'); if (ln && rn) { const seen = new Set(), all = []; rn.concat(ln).forEach(n => { const id = n.t + '|' + n.x; if (!seen.has(id)) { seen.add(id); all.push(n); } }); o.notes = all.sort((a, b) => b.t - a.t).slice(0, 100); }
+  const ls = v(local, 'shop'), rs = v(remote, 'shop'); if (ls && rs) { const ids = new Set((rs.items || []).map(x => x.id)); o.shop = { items: (rs.items || []).concat((ls.items || []).filter(x => !ids.has(x.id))) }; }
+  return o;
+}
+const famCode = c => (c.id || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase();
+function parseJoin(t) { const m = String(t || '').match(/#join\/([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)/) || String(t || '').trim().match(/^([A-Za-z0-9_-]{20,})\.([A-Za-z0-9_-]{40,})$/); return m ? m[1] + '.' + m[2] : null; }
+const SYNC_LABEL = () => ({ home: L('Household', 'Hogar'), info: L('Contacts and info', 'Contactos e info'), kit2: L('Supply checklist', 'Lista de provisiones'), pantry: L('Pantry', 'Despensa'), notes: L('Notes', 'Notas'), shop: L('Shopping list', 'Lista de compras') });
+// "Pantry · changed on Anna's phone · 2 h ago"
+function lastChange(k) { if (!syncCfg()) return ''; const t = store.get('syncT', {})[k]; if (!t) return ''; return L('Changed on ', 'Cambiado en ') + whoName(store.get('syncB', {})[k]) + ' · ' + ago(t); }
+// days since this phone last synced, when it's 3 or more (0 otherwise)
+function syncStale() { const c = syncCfg(); if (!c || !c.at) return 0; const d = Math.floor((Date.now() - c.at) / 864e5); return d >= 3 ? d : 0; }
 function syncStatus() {
   const c = syncCfg(); if (!c) return '';
   if (!navigator.onLine) return L('Waiting for internet. Changes will sync later.', 'Esperando internet. Los cambios se sincronizan después.');
@@ -1082,9 +1136,11 @@ R.join = async rest => {
     <div class="list">${rows.map(([k, v]) => `<div class="row"><div class="grow"><small>${esc(k)}</small><b>${esc(String(v))}</b></div></div>`).join('')}</div>
     <div class="tipbox">${ic('refresh-cw')}<p>${L('Changes on either phone show up on the other whenever both have internet.', 'Los cambios en un teléfono aparecen en el otro cuando los dos tienen internet.')}</p></div>
     ${home ? `<div class="tipbox">${ic('layers')}<p>${cur ? L('This phone was in a different family plan (code ' + famCode(cur) + '). Joining moves it to this one. ', 'Este teléfono estaba en otro plan familiar (código ' + famCode(cur) + '). Al unirte se cambia a este. ') : ''}${L('Your pantry, supplies and notes on this phone are combined with the family\'s, so nothing is lost. Household and contacts come from the family plan.', 'La despensa, provisiones y notas de este teléfono se combinan con las de la familia, así que no se pierde nada. El hogar y los contactos vienen del plan familiar.')}</p></div>` : ''}
+    <label class="field jname"><span>${L('Name this phone', 'Ponle nombre a este teléfono')}</span><input id="jname" maxlength="24" placeholder="${L("e.g. Anna's phone", 'ej. Teléfono de Ana')}" value="${esc(devName())}"></label>
     <button class="btn wide" id="jy">${notApp ? L('Join in this browser instead', 'Unirme en este navegador') : L('Join and keep in sync', 'Unirme y sincronizar')}</button><button class="btn ghost wide" id="jn">${L('Cancel', 'Cancelar')}</button></div>`;
   const jc = $('#jcopy'); if (jc) jc.onclick = async () => { try { await navigator.clipboard.writeText(link); toast(L('Link copied. Now open the app.', 'Enlace copiado. Ahora abre la app.')); } catch (e) { prompt('', link); } };
   $('#jy').onclick = () => {
+    const nm = $('#jname').value.trim(); if (nm) store.set('devName', nm);
     const merged = joinMerge(localSnap(), snap);
     store.set('sync', null);
     for (const k of SYNCED) if (merged[k] != null) store.set(k, merged[k]);  // stamps every key as changed now, so the combined copy goes back up
@@ -1094,31 +1150,74 @@ R.join = async rest => {
   $('#jn').onclick = () => { history.replaceState(null, '', location.pathname + (home ? '' : '#setup')); route(); };
 };
 function joinBoxHTML() {
-  return `<details class="got" id="jbox"><summary>${L('Join with a link', 'Unirme con un enlace')}</summary><div style="display:grid;gap:8px;padding-top:8px">
-    <p class="muted small" style="margin:0">${L('Paste the sync link from your family member\'s phone.', 'Pega el enlace de sincronización del teléfono de tu familiar.')}</p>
+  return `<details class="got" id="jbox"><summary>${L('Join with a link or QR code', 'Unirme con un enlace o código QR')}</summary><div style="display:grid;gap:8px;padding-top:8px">
+    <button class="btn wide" id="jscan">${ic('scan-line')}${L('Scan the QR code', 'Escanear el código QR')}</button>
+    <p class="muted small" style="margin:0">${L('Or paste the sync link from your family member\'s phone.', 'O pega el enlace de sincronización del teléfono de tu familiar.')}</p>
     <input id="jlink" type="url" inputmode="url" autocomplete="off" placeholder="${L('Paste the link here', 'Pega el enlace aquí')}" aria-label="${L('Sync link', 'Enlace de sincronización')}">
-    <button class="btn wide" id="jgo">${L('Join', 'Unirme')}</button></div></details>`;
+    <button class="btn ghost wide" id="jgo">${L('Join with this link', 'Unirme con este enlace')}</button></div></details>`;
 }
 function syncCardHTML() {
   const c = syncCfg();
-  if (!c) return `<section class="card sync"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Keep our phones in sync', 'Mantener nuestros teléfonos sincronizados')}</b><small>${L('Contacts, supplies, pantry and notes update on both phones automatically.', 'Contactos, provisiones, despensa y notas se actualizan solos en los dos teléfonos.')}</small></div></div>
+  if (!c) return `<section class="card sync"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Keep our phones in sync', 'Mantener nuestros teléfonos sincronizados')}</b><small>${L('Contacts, supplies, pantry, shopping list and notes update on every phone automatically.', 'Contactos, provisiones, despensa, lista de compras y notas se actualizan solos en cada teléfono.')}</small></div></div>
     <button class="btn wide" id="syon">${ic('refresh-cw')}${L('Start sync on this phone', 'Iniciar sincronización en este teléfono')}</button>
-    <p class="muted small" style="margin:0">${L('Only one phone starts it. Every other phone joins with the link it sends.', 'Solo un teléfono la inicia. Los demás se unen con el enlace que envía.')}</p>
+    <p class="muted small" style="margin:0">${L('Only one phone starts it. Every other phone joins it.', 'Solo un teléfono la inicia. Los demás se unen.')}</p>
     ${joinBoxHTML()}
     <p class="muted small" style="margin:0">${L('Your plan is locked (encrypted) on this phone before it is saved online. Only phones with your family link can unlock it.', 'Tu plan se cierra con llave (cifrado) en este teléfono antes de guardarse en internet. Solo los teléfonos con su enlace familiar lo pueden abrir.')}</p></section>`;
+  const T = store.get('syncT', {}), B = store.get('syncB', {}), LB = SYNC_LABEL();
+  const recent = SYNCED.filter(k => T[k]).sort((a, b) => T[b] - T[a]).slice(0, 4);
   return `<section class="card sync on"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Sync is on', 'Sincronización activada')} · ${L('code', 'código')} <span class="famcode">${famCode(c)}</span></b><small id="syncst">${syncStatus()}</small></div></div>
     <p class="muted small" style="margin:0">${L('Every phone in your family should show the same code.', 'Todos los teléfonos de la familia deben mostrar el mismo código.')}</p>
-    <button class="btn wide" id="sysend">${ic('share-2')}${L('Send the sync link to your family', 'Enviar el enlace a tu familia')}</button>
+    <label class="field"><span>${L('This phone\'s name', 'Nombre de este teléfono')}</span><input id="dname" maxlength="24" placeholder="${L("e.g. Dad's phone", 'ej. Teléfono de papá')}" value="${esc(devName())}"></label>
+    <div class="grid2"><button class="btn" id="syqr">${ic('qr-code')}${L('QR code', 'Código QR')}</button><button class="btn" id="sysend">${ic('share-2')}${L('Send link', 'Enviar enlace')}</button></div>
     <div class="grid2"><button class="btn ghost" id="sycopy">${ic('copy')}${L('Copy link', 'Copiar enlace')}</button><button class="btn ghost" id="synow">${ic('refresh-cw')}${L('Sync now', 'Sincronizar ya')}</button></div>
+    ${recent.length ? `<div class="sync-log"><small class="muted">${L('Latest changes', 'Últimos cambios')}</small>${recent.map(k => `<div><b>${LB[k]}</b><span>${esc(whoName(B[k]))} · ${ago(T[k])}</span></div>`).join('')}</div>` : ''}
     ${joinBoxHTML()}
     <details class="got"><summary>${L('Turn off', 'Apagar')}</summary><div style="display:grid;gap:8px;padding-top:8px"><button class="btn ghost wide" id="syoff">${L('Stop syncing on this phone', 'Dejar de sincronizar en este teléfono')}</button><button class="btn ghost wide" id="sydel">${L('Delete the online copy for everyone', 'Borrar la copia en internet para todos')}</button></div></details></section>`;
+}
+const loadScript = src => new Promise((ok, no) => { if (document.querySelector(`script[src="${src}"]`)) return ok(); const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
+// full-screen QR code of the join link, for the other phone to scan inside the app
+async function showJoinQR(c) {
+  await loadScript('vendor/qrcode.js');
+  const q = qrcode(0, 'M'); q.addData(joinLink(c)); q.make();
+  const n = q.getModuleCount(); let path = '';
+  for (let r = 0; r < n; r++) for (let x = 0; x < n; x++) if (q.isDark(r, x)) path += `M${x + 4} ${r + 4}h1v1h-1z`;
+  const d = document.createElement('div'); d.className = 'lbox qrbox'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', L('QR code to join', 'Código QR para unirse'));
+  d.innerHTML = `<button class="lbox-x" aria-label="${L('Close', 'Cerrar')}">${ic('x')}</button><div class="qr-card"><svg viewBox="0 0 ${n + 8} ${n + 8}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${path}" fill="#000"/></svg>
+    <b>${L('Family code', 'Código familiar')} <span class="famcode">${famCode(c)}</span></b><p>${L('On the other phone: open Huddle Ready, go to Contacts, tap Share, then Scan the QR code.', 'En el otro teléfono: abre Huddle Ready, ve a Contactos, toca Compartir y luego Escanear el código QR.')}</p><p class="muted small">${L('Keep it private: it unlocks your plan.', 'Es privado: abre su plan.')}</p></div>`;
+  const close = () => { d.remove(); document.removeEventListener('keydown', k); }, k = e => { if (e.key === 'Escape') close(); };
+  d.querySelector('.lbox-x').onclick = close; d.onclick = e => { if (e.target === d) close(); }; document.addEventListener('keydown', k);
+  document.body.appendChild(d); d.querySelector('.lbox-x').focus();
+}
+// camera scanner: the phone's own detector when it has one, otherwise jsQR (loaded only when needed)
+async function scanJoinQR() {
+  const d = document.createElement('div'); d.className = 'lbox scanbox'; d.setAttribute('role', 'dialog');
+  d.innerHTML = `<button class="lbox-x" aria-label="${L('Close', 'Cerrar')}">${ic('x')}</button><div class="scan-wrap"><video playsinline muted></video><i class="scan-frame"></i></div><p id="scanmsg">${L('Point the camera at the QR code on the other phone.', 'Apunta la cámara al código QR del otro teléfono.')}</p>`;
+  document.body.appendChild(d);
+  const video = d.querySelector('video'), msg = d.querySelector('#scanmsg'); let stream = null, live = true;
+  const close = () => { live = false; if (stream) stream.getTracks().forEach(t => t.stop()); d.remove(); };
+  d.querySelector('.lbox-x').onclick = close;
+  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); }
+  catch (e) { msg.textContent = L('The camera is not available. Allow camera access, or paste the link instead.', 'La cámara no está disponible. Permite el acceso a la cámara o pega el enlace.'); return; }
+  if (!live) return close();
+  video.srcObject = stream; await video.play().catch(() => {});
+  let detect;
+  if ('BarcodeDetector' in window) { try { const bd = new BarcodeDetector({ formats: ['qr_code'] }); detect = async () => { const r = await bd.detect(video); return r[0] && r[0].rawValue; }; } catch (e) {} }
+  if (!detect) { try { await loadScript('vendor/jsQR.js'); } catch (e) { msg.textContent = L('Could not start the scanner. Paste the link instead.', 'No se pudo iniciar el escáner. Pega el enlace.'); return; }
+    const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+    detect = async () => { const w = video.videoWidth, h = video.videoHeight; if (!w) return null; const s = Math.min(1, 640 / Math.max(w, h)); cv.width = w * s | 0; cv.height = h * s | 0; cx.drawImage(video, 0, 0, cv.width, cv.height); const r = jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, { inversionAttempts: 'dontInvert' }); return r && r.data; }; }
+  const tick = async () => { if (!live) return; let v = null; try { v = await detect(); } catch (e) {} const j = v && parseJoin(v);
+    if (j) { close(); go('join/' + j); return; } if (v) msg.textContent = L("That QR code isn't a Huddle Ready sync code.", 'Ese código QR no es de Huddle Ready.'); setTimeout(tick, 250); };
+  tick();
 }
 function bindSyncCard() {
   const on = $('#syon'); if (on) on.onclick = async () => { on.disabled = true; on.textContent = L('Turning on…', 'Activando…'); await startSync(); R.share(); };
   const jg = $('#jgo'); if (jg) jg.onclick = () => { const j = parseJoin($('#jlink').value); if (!j) { toast(L("That doesn't look like a sync link", 'Eso no parece un enlace de sincronización')); return $('#jlink').focus(); } go('join/' + j); };
+  const js = $('#jscan'); if (js) js.onclick = scanJoinQR;
   const c = syncCfg(); if (!c) return;
   const msg = L("Join our family's Huddle Ready plan. Open Huddle Ready, go to Contacts, tap Share, then Join with a link, and paste this. Keep it private: it unlocks our plan.", 'Únete al plan de Huddle Ready de nuestra familia. Abre Huddle Ready, ve a Contactos, toca Compartir, luego Unirme con un enlace, y pega esto. Es privado: abre nuestro plan.');
   const copy = async () => { try { await navigator.clipboard.writeText(joinLink(c)); toast(L('Link copied', 'Enlace copiado')); } catch (e) { prompt('', joinLink(c)); } };
+  $('#dname').onchange = e => { store.set('devName', e.target.value.trim()); const B = store.get('syncB', {}); toast(L('Saved', 'Guardado')); };
+  $('#syqr').onclick = () => showJoinQR(c);
   $('#sycopy').onclick = copy;
   $('#synow').onclick = async () => { const st = $('#syncst'); if (st) st.textContent = L('Syncing…', 'Sincronizando…'); stampMissing(); await syncNow(); toast(store.get('syncErr', 0) > (syncCfg() || {}).at ? L('Could not reach the server', 'No se pudo conectar') : L('Synced', 'Sincronizado')); };
   $('#sysend').onclick = () => { if (navigator.share) navigator.share({ title: 'Huddle Ready', text: msg + '\n', url: joinLink(c) }).catch(() => {}); else copy(); };
@@ -1406,6 +1505,34 @@ function openPic(src) {
   document.body.appendChild(d); d.querySelector('.lbox-x').focus();
 }
 
+
+/* ---------- shared shopping list: things you ran out of, plus anything you add ---------- */
+const shopGet = () => store.get('shop', { items: [] });
+function addShop(n, src) {
+  const S = shopGet(); n = String(n || '').trim(); if (!n || S.items.some(x => !x.done && x.n.toLowerCase() === n.toLowerCase())) return false;
+  S.items.unshift({ id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), n, done: 0, src: src || '' }); store.set('shop', S); return true;
+}
+function shopHTML() {
+  const S = shopGet(), todo = S.items.filter(x => !x.done), got = S.items.filter(x => x.done);
+  const onList = new Set(todo.map(x => x.n.toLowerCase()));
+  const low = pantryRows(store.get('pantry', { items: [], gal: 0 })).filter(x => x.q === 1 && !onList.has(x.n.toLowerCase()));
+  const row = x => `<label class="chk"><input type="checkbox" data-sd="${x.id}" ${x.done ? 'checked' : ''}><span>${esc(x.n)}${x.src === 'pantry' && !x.done ? `<small class="muted"> · ${L('ran out', 'se acabó')}</small>` : ''}</span><button class="round ghost sm" data-sx="${x.id}" aria-label="${L('Remove', 'Quitar')} ${esc(x.n)}">${ic('x')}</button></label>`;
+  return `${lastChange('shop') ? `<p class="who-chg">${ic('refresh-cw')}${esc(lastChange('shop'))}</p>` : ''}
+    <div class="card pan-own"><input id="sn" placeholder="${L('Add something to buy', 'Agrega algo para comprar')}" aria-label="${L('Item to buy', 'Algo para comprar')}" enterkeyhint="done"><button class="btn small" id="sadd">${ic('plus')}${L('Add', 'Agregar')}</button></div>
+    ${low.length ? `<button class="list row" id="slow"><span class="lead">${ic('shopping-cart')}</span><div class="grow"><b>${L(`Add ${low.length} almost-out ${low.length === 1 ? 'item' : 'items'}`, `Agregar ${low.length} ${low.length === 1 ? 'cosa que casi se acaba' : 'cosas que casi se acaban'}`)}</b><small>${esc(low.slice(0, 3).map(x => x.n).join(', '))}${low.length > 3 ? '…' : ''} · ${L('1 left', 'queda 1')}</small></div>${ic('plus', 'chev')}</button>` : ''}
+    <div class="list flat shop">${todo.length ? todo.map(row).join('') : `<div class="empty small">${L('Nothing to buy. When something runs out in the pantry, it shows up here.', 'Nada que comprar. Cuando algo se acaba en la despensa, aparece aquí.')}</div>`}
+      ${got.length ? `<details class="got"><summary>${ic('circle-check')}${got.length} ${L('bought', 'comprados')}</summary>${got.map(row).join('')}<button class="more-row" id="sclear">${L('Clear bought items', 'Borrar lo comprado')}</button></details>` : ''}</div>
+    <p class="muted small" style="padding:0 4px">${syncCfg() ? L('Shared with every phone in your family sync.', 'Se comparte con todos los teléfonos de su sincronización familiar.') : L('Turn on family sync in Contacts → Share to share this list.', 'Activa la sincronización en Contactos → Compartir para compartir esta lista.')}</p>`;
+}
+function bindShop(redraw) {
+  const keep = fn => { const y = scrollY; fn(); redraw(); scrollTo(0, y); };
+  const add = () => { const i = $('#sn'), v = i.value.trim(); if (!v) return i.focus(); keep(() => { if (!addShop(v, '')) toast(L('Already on the list', 'Ya está en la lista')); }); const n = $('#sn'); if (n) n.focus(); };
+  $('#sadd').onclick = add; $('#sn').onkeydown = e => { if (e.key === 'Enter') add(); };
+  const lw = $('#slow'); if (lw) lw.onclick = () => keep(() => { const onList = new Set(shopGet().items.filter(x => !x.done).map(x => x.n.toLowerCase())); pantryRows(store.get('pantry', { items: [], gal: 0 })).filter(x => x.q === 1 && !onList.has(x.n.toLowerCase())).forEach(x => addShop(x.n, 'pantry')); });
+  view.querySelectorAll('[data-sd]').forEach(cb => cb.onchange = () => keep(() => { const S = shopGet(), x = S.items.find(i => i.id === cb.dataset.sd); if (x) { x.done = cb.checked ? 1 : 0; store.set('shop', S); } }));
+  view.querySelectorAll('[data-sx]').forEach(b => b.onclick = e => { e.preventDefault(); keep(() => { const S = shopGet(); S.items = S.items.filter(i => i.id !== b.dataset.sx); store.set('shop', S); }); });
+  const cl = $('#sclear'); if (cl) cl.onclick = () => keep(() => { const S = shopGet(); S.items = S.items.filter(i => !i.done); store.set('shop', S); });
+}
 /* ---------- pantry: what you have, and how many days it lasts ---------- */
 /* pantry: a starter list everyone sees (tap + to fill in amounts), plus "something else" for anything not on it */
 const PANTRY_QUICK = () => [
@@ -1446,6 +1573,7 @@ function pantryHTML() {
   return `<section class="pan-sum"><div class="pan-stat"><span class="qa-ic t-amber">${ic('utensils')}</span><div class="grow"><b>${d1(days)} ${L('days of food', 'días de comida')}</b><small>${d1(nocookDays)} ${L('of them with no cooking', 'sin cocinar')} · ${people} ${people === 1 ? L('person', 'persona') : L('people', 'personas')}</small><div class="track"><i style="width:${pct(days)}%"></i></div></div></div>
     <div class="pan-stat"><span class="qa-ic t-blue">${ic('droplets')}</span><div class="grow"><b>${d1(waterDays)} ${L('days of water', 'días de agua')}</b><small>${L('1 gallon per person per day', '1 galón por persona al día')}</small><div class="track"><i style="width:${pct(waterDays)}%"></i></div></div></div>
     <p class="muted small" style="margin:0">${has ? L('Goal: 14 days. Estimates: 3 meals a person a day. Tap Edit to match your labels.', 'Meta: 14 días. Son cálculos: 3 comidas por persona al día. Toca Editar para ajustar a tus etiquetas.') : L('Tap + next to what you have. That\'s it. The days add up for you.', 'Toca + junto a lo que tienes. Eso es todo. Los días se suman solos.')}</p></section>
+    ${lastChange('pantry') ? `<p class="who-chg">${ic('refresh-cw')}${esc(lastChange('pantry'))}</p>` : ''}
     <div class="list"><div class="stepper" style="padding:10px 16px"><b style="flex:1">${L('Gallons of water stored', 'Galones de agua guardados')}</b><button data-gal="-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val" style="font-size:1.3rem">${P.gal || 0}</span><button data-gal="1" aria-label="${L('More', 'Más')}">+</button></div></div>
     ${useFirst.length ? `<div class="sub-label">${ic('calendar-check')}${L('Use first', 'Úsalos primero')}</div><div class="list">${useFirst.map(x => `<div class="row"><div class="grow"><b>${esc(x.n)}</b><small>${x.e < now.toISOString().slice(0, 7) ? L('Past date: ', 'Ya pasó la fecha: ') : L('Best by ', 'Consumir antes de ')}${mon(x.e)}</small></div></div>`).join('')}</div>` : ''}
     <div class="sub-label">${ic('package')}${L('Ready to eat', 'Listo para comer')}</div><div class="list">${ready.map(item).join('')}</div>
@@ -1461,7 +1589,7 @@ function bindPantry(redraw) {
   // find a saved item by key, creating it from the starter list if it isn't saved yet
   const it = (P, k) => { let x = P.items.find(i => i.k === k); if (!x) { const q = PANTRY_QUICK().find(r => r[0] === k); x = { k, n: q[1], q: 0, m: q[2], c: q[3], e: '' }; P.items.push(x); } return x; };
   view.querySelectorAll('[data-gal]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.gal = Math.max(0, (P.gal || 0) + +b.dataset.gal); put(P); }));
-  view.querySelectorAll('[data-pq]').forEach(b => b.onclick = () => keep(() => { const [k, d] = b.dataset.pq.split(','), P = get(), x = it(P, k); x.q = Math.max(0, x.q + +d); put(P); }));
+  view.querySelectorAll('[data-pq]').forEach(b => b.onclick = () => keep(() => { const [k, d] = b.dataset.pq.split(','), P = get(), x = it(P, k), was = x.q; x.q = Math.max(0, x.q + +d); put(P); if (was > 0 && x.q === 0 && addShop(x.n, 'pantry')) toast(L('Added to the shopping list', 'Se agregó a la lista de compras')); }));
   const own = $('#padd'); if (own) own.onclick = () => { const v = $('#pn').value.trim(); if (!v) return $('#pn').focus(); keep(() => { const P = get(); P.items.push({ k: 'own' + Date.now(), n: v, q: 1, m: 1, c: 0, e: '' }); put(P); }); };
   view.querySelectorAll('[data-pdel]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.items = P.items.filter(x => x.k !== b.dataset.pdel); put(P); }));
   view.querySelectorAll('[data-pm]').forEach(inp => inp.onchange = () => keep(() => { const P = get(), v = parseFloat(inp.value); it(P, inp.dataset.pm).m = isNaN(v) ? 0 : Math.max(0, v); put(P); }));

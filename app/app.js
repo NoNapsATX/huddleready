@@ -23,6 +23,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&a
 const tel = n => 'tel:' + String(n).replace(/[^\d+]/g, '');
 const go = h => { if (location.hash.slice(1) === h) route(); else location.hash = h; };
 function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; el.classList.toggle('high', !!home || !!document.querySelector('.screen.docked')); clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2000); }
+const fmtShort = ms => { ms = Math.max(0, ms); const h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000); return h ? `${h}h ${m}m` : `${m} min`; };
 function fmtDur(ms) { ms = Math.max(0, ms); const h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000); return h ? `${h} h ${m} min` : `${m} min`; }
 const bar = title => `<header class="bar"><button class="back" data-back aria-label="${L('Back', 'Atrás')}">${ic('arrow-left')}</button><h1>${title}</h1></header>`;
 const fmtDate = ms => new Date(ms).toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric' });
@@ -193,7 +194,7 @@ function route() {
   tabbar(R[name] ? name : '');
   window.scrollTo(0, 0);
 }
-window.addEventListener('hashchange', () => { if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !/^#kids/.test(location.hash)) document.startViewTransition(route); else route(); });
+window.addEventListener('hashchange', () => { if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !/^#kids/.test(location.hash)) { const t = document.startViewTransition(route); t.ready.catch(() => {}); t.finished.catch(() => {}); } else route(); });
 view.addEventListener('click', e => {
   const b = e.target.closest('[data-back]'); if (b) { const up = b.dataset.back; go(up || ''); return; }
   const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go);
@@ -228,13 +229,14 @@ function skillStrip(out) {
 R.home = () => {
   const o = outage(), u = util();
   const syncOn = !!(typeof syncCfg === 'function' && syncCfg());
-  const top = `<div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div class="grow"><div class="brand">${greet()}</div><div class="chips-row"><span class="status ${swOK ? 'ok' : ''}" id="status"><i></i><span>${swOK ? L('Works offline', 'Funciona sin internet') : L('Saving for offline…', 'Guardando para usar sin internet…')}</span></span>${syncOn ? (syncStale() ? `<span class="status warn">${ic('refresh-cw')}<span>${L('Not synced', 'Sin sincronizar')}</span></span>` : `<span class="status ok">${ic('refresh-cw')}<span>${L('Synced', 'Sincronizado')}</span></span>`) : ''}</div></div>
-    <button class="lang-chip" id="lang" lang="${lang === 'es' ? 'en' : 'es'}" aria-label="${L('Cambiar a español', 'Switch to English')}">${ic('languages')}${L('ES', 'EN')}</button><button class="icon-btn" data-go="details" aria-label="${L('Our info and settings', 'Nuestra info y ajustes')}">${ic('settings')}</button></div>`;
+  const top = `<div class="home-top"><img src="icons/icon-192.png" alt="" class="logo"><div class="grow"><div class="brand">${greet()}</div><div class="chips-row"><span class="status ${swOK ? 'ok' : ''}" id="status" ${swOK ? 'hidden' : ''}><i></i><span>${swOK ? L('Works offline', 'Funciona sin internet') : L('Saving for offline…', 'Guardando para usar sin internet…')}</span></span>${syncOn && syncStale() ? `<span class="status warn">${ic('refresh-cw')}<span>${L('Not synced', 'Sin sincronizar')}</span></span>` : ''}</div></div>
+    <button class="lang-chip" id="lang" lang="${lang === 'es' ? 'en' : 'es'}" aria-label="${L('Cambiar a español', 'Switch to English')}">${L('ES', 'EN')}</button><button class="icon-btn" data-go="details" aria-label="${L('Our info and settings', 'Nuestra info y ajustes')}">${ic('settings')}</button></div>`;
   const where = [info.building && L('Bldg ', 'Edif. ') + info.building, info.unit && L('Unit ', 'Apto. ') + info.unit].filter(Boolean).join(', ');
   const tile = (go, i, t, tone, sub) => `<button class="tl t-${tone}" data-go="${go}"><span class="qa-ic">${ic(i)}</span><span class="tile-t">${t}</span>${sub ? `<small>${sub}</small>` : ''}</button>`;
   const ps = pantryStats(), d1 = v => v >= 10 ? Math.floor(v) : Math.floor(v * 2) / 2;
   const hasPantry = ps.P.items.some(x => x.q > 0);
-  const stat = (go, i, tone, big, label) => `<button class="stat t-${tone}" data-go="${go}">${ic(i)}<b>${big}</b><small>${label}</small></button>`;
+  const stat = (go, i, tone, big, label, risk) => `<button class="stat t-${tone}${risk ? ' risk-' + risk : ''}" data-go="${go}">${ic(i)}<b>${big}</b><small>${label}</small></button>`;
+  const riskD = d => d < 3 ? 'red' : d < 14 ? 'amber' : '';  // goal: 14 days
   const nContacts = ['contact', 'fallback1', 'fallback2', 'er', 'pediatrician', 'doctor', 'leasing'].filter(k => info[k]).length + (Array.isArray(info.extra) ? info.extra.filter(x => x.p).length : 0);
   let body;
   if (o) {
@@ -251,7 +253,7 @@ R.home = () => {
     }
     body = `<section class="live2"><div class="live-head"><span class="dot"></span><b>${L('Power out', 'Sin luz')}</b><span id="elapsed">${fmtDur(Date.now() - o.start)}</span><button class="btn ghost small" id="end">${L('Power is back', 'Ya volvió la luz')}</button></div></section>
       ${now}
-      <div class="stats">${stat('food', 'refrigerator', left > 0 ? 'amber' : 'red', `<span id="fridge">${left > 0 ? fmtDur(left) : L('Past', 'Pasó')}</span>`, L('fridge cold', 'refri frío'))}${stat('food', 'utensils', 'green', hasPantry ? d1(ps.days) + L(' days', ' días') : L('Add', 'Agregar'), L('of food', 'de comida'))}${stat('supplies/pantry', 'droplets', 'blue', d1(ps.waterDays) + L(' days', ' días'), L('of water', 'de agua'))}</div>
+      <div class="stats">${stat('food', 'refrigerator', left > 0 ? 'amber' : 'red', `<span id="fridge">${left > 0 ? fmtShort(left) : L('Past', 'Pasó')}</span>`, L('fridge cold', 'refri frío'), left <= 0 ? 'red' : left < 3600000 ? 'amber' : '')}${stat('food', 'utensils', 'green', hasPantry ? d1(ps.days) + L(' days', ' días') : L('Add', 'Agregar'), L('of food', 'de comida'), hasPantry ? riskD(ps.days) : 'amber')}${stat('supplies/pantry', 'droplets', 'blue', d1(ps.waterDays) + L(' days', ' días'), L('of water', 'de agua'), riskD(ps.waterDays))}</div>
       <div class="grid3">${tile('food', 'utensils', L('Food & pantry', 'Comida y despensa'), 'amber')}${tile('stay', 'door-open', L('Stay or go', 'Quedarse o irse'), 'blue')}${tile('light', 'lamp-desk', L('Night-light', 'Lamparita'), 'amber')}${tile('notes', 'notebook-pen', L('Notes', 'Notas'), 'blue')}${tile('skills/c-aid', 'heart-pulse', L('First aid', 'Primeros auxilios'), 'red')}${tile('near', 'locate', L('Help near me', 'Ayuda cerca'), 'green')}</div>
       <div class="row2"><a class="call" href="tel:911">${ic('siren')}<div><b>911</b><small>${L('Emergency', 'Emergencia')}</small></div></a>${u.phone ? `<a class="call" href="${tel(u.phone)}">${ic('phone')}<div><b>${L('Report outage', 'Reportar')}</b><small>${esc(u.phone)}</small></div></a>` : `<button class="call" data-go="calls">${ic('phone')}<div><b>${L('Call list', 'Teléfonos')}</b><small>${L('All numbers', 'Todos los números')}</small></div></button>`}</div>
       ${H().cross ? `<div class="where">${ic('map-pin')}<span>${L('Tell 911: we\'re near', 'Dile al 911: estamos cerca de')} <b>${esc(H().cross)}</b></span></div>` : ''}
@@ -268,7 +270,7 @@ R.home = () => {
       </section>
       ${syncStale() ? `<button class="next stale" id="synchome"><span class="qa-ic t-amber">${ic('refresh-cw')}</span><div><small>${L(`Phones not synced in ${syncStale()} days`, `Teléfonos sin sincronizar en ${syncStale()} días`)}</small><b>${L('Tap to sync now. Open the app on the other phones with internet too.', 'Toca para sincronizar. Abre la app en los otros teléfonos con internet también.')}</b></div>${ic('chevron-right', 'chev')}</button>` : ''}
       <div class="sec-h">${L('At a glance', 'De un vistazo')}</div>
-      <div class="stats">${stat('supplies/pantry', 'utensils', 'green', hasPantry ? d1(ps.days) + L(' days', ' días') : L('Add', 'Agregar'), L('of food', 'de comida'))}${stat('supplies/pantry', 'droplets', 'blue', d1(ps.waterDays) + L(' days', ' días'), L('of water', 'de agua'))}${stat('calls', 'phone', 'amber', nContacts || L('Add', 'Agregar'), L('our contacts', 'contactos'))}</div>
+      <div class="stats">${stat('supplies/pantry', 'utensils', 'green', hasPantry ? d1(ps.days) + L(' days', ' días') : L('Add', 'Agregar'), L('of food', 'de comida'), hasPantry ? riskD(ps.days) : 'amber')}${stat('supplies/pantry', 'droplets', 'blue', d1(ps.waterDays) + L(' days', ' días'), L('of water', 'de agua'), riskD(ps.waterDays))}${stat('calls', 'phone', 'amber', nContacts || L('Add', 'Agregar'), L('our contacts', 'contactos'), nContacts ? '' : 'amber')}</div>
       <div class="sec-h">${L('Get ready', 'Prepárense')}</div>
       <div class="grid2">${tile('supplies/pantry', 'package', L('Supplies & pantry', 'Provisiones y despensa'), 'green', L('What you have', 'Lo que tienen'))}${tile('skills', 'book-open', L('Skills & how-tos', 'Habilidades y guías'), 'blue', L('With pictures', 'Con dibujos'))}${tile('drill', 'timer', L('Practice drill', 'Simulacro'), 'amber', L('5 minutes', '5 minutos'))}${tile('calls', 'users', L('Contacts', 'Contactos'), 'red', syncOn ? L('Synced with family', 'Sincronizado') : L('Calls, share, sync', 'Llamadas, compartir'))}</div>
       ${installCardHTML()}`;
@@ -281,13 +283,16 @@ R.home = () => {
   const sh = $('#synchome'); if (sh) sh.onclick = async () => { sh.disabled = true; stampMissing(); await syncNow(); toast(syncStale() ? L('Could not reach the server', 'No se pudo conectar') : L('Synced', 'Sincronizado')); R.home(); };
   const sos = $('#sos'); if (sos) sos.onclick = () => { const now = Date.now(); store.set('outage', { start: now, step: 0, done: false }); store.set('outTime', now); go('outage'); };
   const end = $('#end'); if (end) { let armed = false; end.onclick = () => { if (!armed) { armed = true; end.textContent = L('Tap again', 'Toca otra vez'); setTimeout(() => { armed = false; if (end.isConnected) end.textContent = L('Power is back', 'Ya volvió la luz'); }, 3000); return; } store.set('outage', null); document.documentElement.classList.remove('night'); toast(L('Glad it\'s back. Check food before eating.', 'Qué bueno. Revisa la comida antes de comer.')); route(); }; }
-  route.tick = setInterval(() => { const o = outage(); if (!o) return; const e = $('#elapsed'), f = $('#fridge'); const left = 4 * 3600000 - (Date.now() - (outTime() || o.start)); if (e) e.textContent = fmtDur(Date.now() - o.start); if (f) f.textContent = left > 0 ? fmtDur(left) : L('Past', 'Pasó'); }, 30000);
+  route.tick = setInterval(() => { const o = outage(); if (!o) return; const e = $('#elapsed'), f = $('#fridge'); const left = 4 * 3600000 - (Date.now() - (outTime() || o.start)); if (e) e.textContent = fmtDur(Date.now() - o.start); if (f) f.textContent = left > 0 ? fmtShort(left) : L('Past', 'Pasó'); }, 30000);
 };
 R.ready = () => {
   const r = readiness();
   view.innerHTML = `<div class="screen">${bar(L('Your readiness', 'Su preparación'))}
     <p class="muted" style="padding:0 4px">${L('Ten things that matter most in an outage. Tap one to do it.', 'Las diez cosas que más importan en un apagón. Toca una para hacerla.')}</p>
-    <div class="list">${r.items.map(([id, ok, t, go, icn]) => `<button class="row" data-go="${go}"><span class="lead ${ok ? 'ok' : ''}">${ic(ok ? 'circle-check' : icn)}</span><div class="grow"><b class="${ok ? 'done' : ''}">${t}</b></div>${ok ? '' : ic('chevron-right', 'chev')}</button>`).join('')}</div></div>`;
+    ${(() => { const row = ([id, ok, t, go, icn]) => `<button class="row" data-go="${go}"><span class="lead ${ok ? 'ok' : ''}">${ic(ok ? 'circle-check' : icn)}</span><div class="grow"><b>${t}</b></div>${ic('chevron-right', 'chev')}</button>`;
+      const todo = r.items.filter(x => !x[1]), done = r.items.filter(x => x[1]);
+      return `<div class="list">${todo.length ? todo.map(row).join('') : `<div class="empty small">${L('All ten done. Keep it fresh with the twice-a-year check.', 'Las diez listas. Manténganlo al día con la revisión de cada seis meses.')}</div>`}
+        ${done.length ? `<details class="got"><summary>${ic('circle-check')}${done.length} ${L('done', 'listos')}</summary>${done.map(row).join('')}</details>` : ''}</div>`; })()}</div>`;
 };
 /* ---------- fridge sheet (print or save as PDF) ---------- */
 R.sheet = () => {
@@ -392,8 +397,12 @@ R.drill = () => checklist(true);
 
 /* ---------- stay or go ---------- */
 R.stay = () => {
-  const s = Object.assign({ season: new Date().getMonth() >= 4 && new Date().getMonth() <= 8 ? 'hot' : 'cold', temp: null, water: 5, co: false, order: false, sick: false, meds: false }, store.get('stay', {}));
+  const s = Object.assign({ season: new Date().getMonth() >= 4 && new Date().getMonth() <= 8 ? 'hot' : 'cold', temp: null, water: null, co: false, order: false, sick: false, meds: false }, store.get('stay', {}));
+  if (!s.v2) { s.temp = null; s.water = null; s.v2 = 1; }  // older versions saved made-up starting values
   const save = () => store.set('stay', s), n = NEED();
+  // water comes from the pantry unless someone sets it here; no gallons entered anywhere = no water verdict
+  const pw = () => { const ps = pantryStats(); return ps.P.gal > 0 ? Math.floor(ps.waterDays * 2) / 2 : null; };
+  const water = () => s.water != null ? s.water : pw();
   function judge() {
     let lv = 0; const why = []; const up = (l, m) => { lv = Math.max(lv, l); why.push(m); };
     if (s.co) up(3, L('Possible carbon monoxide. Everyone outside now, call 911 from outside.', 'Posible intoxicación por monóxido de carbono, un gas sin olor ni color. Todos afuera al aire libre ya, y llama al 911 desde afuera.'));
@@ -404,7 +413,7 @@ R.stay = () => {
     if (s.temp == null) { /* no reading yet: judge only what's known */ }
     else if (s.season === 'cold') { if (s.temp < lim) up(2, L(`Warm room ${tShow(s.temp)} is too cold${lim === 16 ? (hasKids() ? ' for young kids' : ' for older adults') : ''}.`, `El cuarto más tibio está a ${tShow(s.temp)}: demasiado frío${lim === 16 ? (hasKids() ? ' para niños chicos' : ' para personas mayores') : ''}.`)); else if (s.temp < lim + 2) up(1, L(`Warm room ${tShow(s.temp)}. Call Fallback 1 and pack the car.`, `El cuarto más tibio está a ${tShow(s.temp)}. Llama al Plan B 1 y prepara el carro.`)); }
     else { if (s.temp > 32) up(2, L(`Indoors ${tShow(s.temp)}. Leave by early afternoon.`, `Adentro hace ${tShow(s.temp)}. Salgan antes de media tarde.`)); else if (s.temp >= 29) up(1, L(`Indoors ${tShow(s.temp)}${upstairs() ? ' and upper floors get hotter' : ' and rising'}.`, `Adentro hace ${tShow(s.temp)}${upstairs() ? ' y los pisos de arriba se calientan más' : ' y sigue subiendo'}.`)); }
-    if (s.water < 2) up(2, L('Less than 2 days of water.', 'Quedan menos de 2 días de agua.')); else if (s.water < 3) up(1, L('Water is getting low.', 'Se está acabando el agua.'));
+    const w = water(); if (w == null) { /* not known */ } else if (w < 2) up(2, L('Less than 2 days of water.', 'Quedan menos de 2 días de agua.')); else if (w < 3) up(1, L('Water is getting low.', 'Se está acabando el agua.'));
     if (lv >= 1 && n.nocar) why.push(L('No car: line up a ride now, before roads or phones get worse (211, or 311 in Austin).', 'Sin carro: consigan transporte ya, antes de que empeoren las calles o los teléfonos (211, o 311 en Austin).'));
     if (lv >= 1 && n.stairs && upstairs()) why.push(L('Stairs are hard for someone here: leave in daylight, with help.', 'A alguien se le dificultan las escaleras: salgan de día y con ayuda.'));
     if (n.device && !s.meds && lv < 2) why.push(L('Medical device: check how many hours of battery are left.', 'Equipo médico: revisa cuántas horas de batería quedan.'));
@@ -418,7 +427,7 @@ R.stay = () => {
     view.innerHTML = `<div class="screen">${bar(L('Stay or go?', '¿Quedarse o irse?'))}${judge()}
       <div class="seg" role="group" aria-label="${L('Weather', 'Clima')}"><button aria-pressed="${s.season === 'cold'}" data-season="cold">${L('Cold', 'Frío')}</button><button aria-pressed="${s.season === 'hot'}" data-season="hot">${L('Hot', 'Calor')}</button></div>
       <div class="card"><div class="stepper"><div><b>${s.season === 'cold' ? L('Warmest room', 'Cuarto más tibio') : L('Coolest room', 'Cuarto más fresco')}</b><div class="muted small">${L('Indoor temperature', 'Temperatura adentro')}</div></div><button data-d="temp,-1" aria-label="${L('Lower', 'Bajar')}">−</button><span class="val">${s.temp == null ? '—' : tShow(s.temp)}</span><button data-d="temp,1" aria-label="${L('Higher', 'Subir')}">+</button></div>${unitSeg()}</div>
-      <div class="card"><div class="stepper"><div><b>${L('Drinking water', 'Agua para tomar')}</b><div class="muted small">${L('Days left', 'Días que quedan')}</div></div><button data-d="water,-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val">${s.water} ${L('d', 'd')}</span><button data-d="water,1" aria-label="${L('More', 'Más')}">+</button></div></div>
+      <div class="card"><div class="stepper"><div><b>${L('Drinking water', 'Agua para tomar')}</b><div class="muted small">${s.water == null && pw() != null ? L('Days left, from your pantry', 'Días que quedan, según la despensa') : L('Days left', 'Días que quedan')}</div></div><button data-d="water,-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val">${water() == null ? '—' : water() + ' ' + L('d', 'd')}</span><button data-d="water,1" aria-label="${L('More', 'Más')}">+</button></div></div>
       <div class="label">${L('Any of these?', '¿Alguno de estos?')}</div>
       <div class="list">${tog('co', L('CO alarm, or headaches and dizziness in several people', 'Suena la alarma de monóxido de carbono, o varias personas tienen dolor de cabeza y mareo'))}${tog('order', L('Evacuation order or fire nearby', 'Orden de evacuación o incendio cerca'))}${tog('sick', L('Someone confused, very sleepy or overheated', 'Alguien confundido, muy dormido o con mucho calor'))}${tog('meds', L("A medicine or device can't be kept going", 'Una medicina o equipo no se puede mantener'))}</div></div>`;
     view.querySelectorAll('[data-season]').forEach(b => b.onclick = () => { if (s.season !== b.dataset.season) { s.season = b.dataset.season; s.temp = null; } save(); draw(); });
@@ -426,6 +435,7 @@ R.stay = () => {
       if (k === 'temp') { const start = s.season === 'hot' ? 27 : 20;  // first tap starts from an ordinary indoor reading (80°F / 68°F), not a warning
         if (s.temp == null) s.temp = start; else if (tUnit() === 'F') s.temp = (cToF(s.temp) + +d - 32) * 5 / 9; else s.temp = Math.round(s.temp) + +d;
         s.temp = Math.round(s.temp * 100) / 100; }
+      else if (k === 'water') s.water = Math.max(0, (water() == null ? 0 : water()) + +d);
       else s[k] = Math.max(0, s[k] + +d); save(); draw(); });
     bindUnit(draw);
     view.querySelectorAll('.toggle input').forEach(c => c.onchange = () => { s[c.dataset.k] = c.checked; save(); draw(); });
@@ -813,7 +823,7 @@ const ESSENTIALS = () => ['water', 'co', 'light', 'bank', 'food', 'firstaid', 'r
 const calcDefault = () => ({ a: (H().adults || 2), k: H().kids || 0, d: littles() ? 1 : 0, days: 14 });
 let supTab = 'pantry';
 R.supplies = (rest) => {
-  if (rest && rest[0]) supTab = rest[0];
+  if (rest && rest[0]) supTab = rest[0]; else if (rest && supTab === 'calc') supTab = 'pantry';  // opening Supplies from the tab bar starts on the pantry
   const ticks = store.get('kit2', {}), KIT = kit();
   const all = KIT.flatMap(([, items]) => items), done = all.filter(([id]) => ticks[id]).length;
   let body;
@@ -844,9 +854,9 @@ R.supplies = (rest) => {
     const rows = [[L('Drinking water', 'Agua para tomar'), p * c.days + L(' gal', ' gal'), L('1 gallon per person per day', '1 galón por persona al día')], [L('Meals', 'Comidas'), p * c.days * 3, L('3 per person per day', '3 por persona al día')], [L("Kids' snacks", 'Botanas para niños'), c.k * c.days * 2, L('2 a day per child', '2 al día por niño')], [L('Diapers or pull-ups', 'Pañales'), c.d * c.days * 6, L('About 6 a day', 'Unos 6 al día')], [L('Flashlights or headlamps', 'Linternas o lámparas de cabeza'), p, L('1 per person', '1 por persona')], [L('Power banks', 'Baterías portátiles'), Math.max(1, c.a), L('1 per adult', '1 por adulto')], [L('Prescriptions', 'Recetas'), c.days + L(' days', ' días'), L('Each person', 'Cada persona')], [L('Cash', 'Efectivo'), '$' + Math.max(200, p * 50), L('Small bills', 'Billetes chicos')]];
     if (H().pets) rows.push([L('Pet food', 'Comida de mascota'), c.days + L(' days', ' días'), L('Plus water for them', 'Más agua para ellas')]);
     const st = (k, t) => `<div class="stepper" style="padding:10px 16px;border-bottom:1px solid var(--line)"><b style="flex:1">${t}</b><button data-c="${k},-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val" style="font-size:1.3rem">${c[k]}</span><button data-c="${k},1" aria-label="${L('More', 'Más')}">+</button></div>`;
-    body = `<div class="list">${st('a', L('Adults', 'Adultos'))}${st('k', L('Children', 'Niños'))}${st('d', L('In diapers', 'Con pañal'))}${st('days', L('Days', 'Días'))}</div><div class="list calc"><table>${rows.map(r => `<tr><td>${r[0]}<small>${r[2]}</small></td><td class="n">${r[1]}</td></tr>`).join('')}</table></div>`;
+    body = `<button class="list row" data-t="pantry"><span class="lead">${ic('arrow-left')}</span><div class="grow"><b>${L('How much to store', 'Cuánto guardar')}</b><small>${L('Back to the pantry', 'Volver a la despensa')}</small></div></button><div class="list">${st('a', L('Adults', 'Adultos'))}${st('k', L('Children', 'Niños'))}${st('d', L('In diapers', 'Con pañal'))}${st('days', L('Days', 'Días'))}</div><div class="list calc"><table>${rows.map(r => `<tr><td>${r[0]}<small>${r[2]}</small></td><td class="n">${r[1]}</td></tr>`).join('')}</table></div>`;
   }
-  view.innerHTML = `<div class="screen">${bar(L('Supplies', 'Provisiones'))}${outage() ? `<button class="sk-btn" data-go="food"><span class="qa-ic t-amber">${ic('refrigerator')}</span><div class="grow"><b>${L('Food clock', 'Reloj de comida')}</b><small>${L('What to eat first right now', 'Qué comer primero ahorita')}</small></div>${ic('chevron-right', 'chev')}</button>` : ''}<div class="seg"><button aria-pressed="${supTab === 'pantry'}" data-t="pantry">${L('Pantry', 'Despensa')}</button><button aria-pressed="${supTab === 'shop'}" data-t="shop">${L('Shopping', 'Compras')}${(n => n ? ` <span class="seg-n">${n}</span>` : '')(shopGet().items.filter(x => !x.done).length)}</button><button aria-pressed="${supTab === 'list'}" data-t="list">${L('Checklist', 'Lista')}</button><button aria-pressed="${supTab === 'calc'}" data-t="calc">${L('How much', 'Cuánto')}</button></div>${body}</div>`;
+  view.innerHTML = `<div class="screen">${bar(L('Supplies', 'Provisiones'))}${outage() ? `<button class="sk-btn" data-go="food"><span class="qa-ic t-amber">${ic('refrigerator')}</span><div class="grow"><b>${L('Food clock', 'Reloj de comida')}</b><small>${L('What to eat first right now', 'Qué comer primero ahorita')}</small></div>${ic('chevron-right', 'chev')}</button>` : ''}<div class="seg"><button aria-pressed="${supTab === 'pantry'}" data-t="pantry">${L('Pantry', 'Despensa')}</button><button aria-pressed="${supTab === 'shop'}" data-t="shop">${L('Shopping', 'Compras')}${(n => n ? ` <span class="seg-n">${n}</span>` : '')(shopGet().items.filter(x => !x.done).length)}</button><button aria-pressed="${supTab === 'list'}" data-t="list">${L('Checklist', 'Lista')}</button></div>${body}</div>`;
   if (supTab === 'pantry') bindPantry(() => R.supplies());
   if (supTab === 'shop') bindShop(() => R.supplies());
   view.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { supTab = b.dataset.t; R.supplies(); });
@@ -1593,20 +1603,23 @@ function pantryHTML() {
   const useFirst = rows.filter(x => x.q > 0 && x.e && x.e <= soon).sort((a, b) => a.e < b.e ? -1 : 1);
   const mon = e => new Date(e + '-15').toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { month: 'short', year: 'numeric' });
   const item = x => { const meals = x.q * x.m;
-    return `<div class="pan-item${x.q ? '' : ' zero'}"><div class="pan-name"><div class="grow"><b>${esc(x.n)}</b><small>${x.d ? esc(x.d) + ' · ' : ''}${x.q ? (meals ? `${+meals.toFixed(1)} ${meals === 1 ? L('meal', 'comida') : L('meals', 'comidas')}` : L('not counted', 'no se cuenta')) + (x.e ? ' · ' + L('best by ', 'antes de ') + mon(x.e) : '') : L('Tap + to add', 'Toca + para agregar')}</small></div>
+    return `<div class="pan-item${x.q ? '' : ' zero'}"><div class="pan-name"><div class="grow" ${x.q || x.k.startsWith('own') ? 'data-pedit role="button" tabindex="0"' : ''}><b>${esc(x.n)}</b><small>${x.d ? esc(x.d) + ' · ' : ''}${x.q ? (meals ? `${+meals.toFixed(1)} ${meals === 1 ? L('meal', 'comida') : L('meals', 'comidas')}` : L('not counted', 'no se cuenta')) + (x.e ? ' · ' + L('best by ', 'antes de ') + mon(x.e) : '') : L('Tap + to add', 'Toca + para agregar')}</small></div>
       <div class="stepper sm"><button data-pq="${x.k},-1" aria-label="${L('Less', 'Menos')} ${esc(x.n)}" ${x.q ? '' : 'disabled'}>−</button><span class="val">${x.q}</span><button data-pq="${x.k},1" aria-label="${L('More', 'Más')} ${esc(x.n)}">+</button></div></div>
       ${x.q || x.k.startsWith('own') ? `<details class="pan-edit"><summary>${L('Edit', 'Editar')}</summary><div class="pan-ctl"><label class="pan-f"><small>${L('meals each', 'comidas c/u')}</small><input type="number" inputmode="decimal" step="0.5" min="0" value="${x.m}" data-pm="${x.k}"></label>
         <label class="pan-f"><small>${L('best by', 'antes de')}</small><input type="month" value="${x.e || ''}" data-pe="${x.k}"></label>${x.k.startsWith('own') ? `<button class="round ghost" data-pdel="${x.k}" aria-label="${L('Remove', 'Quitar')} ${esc(x.n)}">${ic('trash')}</button>` : ''}</div></details>` : ''}</div>`; };
-  const mineFirst = a => [...a.filter(x => x.k.startsWith('own') || x.q > 0), ...a.filter(x => !x.k.startsWith('own') && !x.q)];
-  const ready = mineFirst(rows.filter(x => !x.c)), cook = mineFirst(rows.filter(x => x.c)), own = [];
+  const mine = x => x.k.startsWith('own') || x.q > 0;
+  const ready = rows.filter(x => !x.c && mine(x)), cook = rows.filter(x => x.c && mine(x)), more = rows.filter(x => !mine(x)), own = [];
+  const goalMeals = people * 3 * 14, goalGal = people * 14;
   return `<section class="pan-sum"><div class="pan-stat"><span class="qa-ic t-amber">${ic('utensils')}</span><div class="grow"><b>${d1(days)} ${L('days of food', 'días de comida')}</b><small>${d1(nocookDays)} ${L('of them with no cooking', 'sin cocinar')} · ${people} ${people === 1 ? L('person', 'persona') : L('people', 'personas')}</small><div class="track"><i style="width:${pct(days)}%"></i></div></div></div>
     <div class="pan-stat"><span class="qa-ic t-blue">${ic('droplets')}</span><div class="grow"><b>${d1(waterDays)} ${L('days of water', 'días de agua')}</b><small>${L('1 gallon per person per day', '1 galón por persona al día')}</small><div class="track"><i style="width:${pct(waterDays)}%"></i></div></div></div>
-    <p class="muted small" style="margin:0">${has ? L('Goal: 14 days. Estimates: 3 meals a person a day. Tap Edit to match your labels.', 'Meta: 14 días. Son cálculos: 3 comidas por persona al día. Toca Editar para ajustar a tus etiquetas.') : L('Tap + next to what you have. That\'s it. The days add up for you.', 'Toca + junto a lo que tienes. Eso es todo. Los días se suman solos.')}</p></section>
+    <p class="muted small" style="margin:0">${has ? L(`Goal for ${people} ${people === 1 ? 'person' : 'people'}, 14 days: ${goalGal} gallons of water and ${goalMeals} meals. Estimates use 3 meals a person a day; tap a food to match its label.`, `Meta para ${people} ${people === 1 ? 'persona' : 'personas'}, 14 días: ${goalGal} galones de agua y ${goalMeals} comidas. Son cálculos de 3 comidas por persona al día; toca una comida para ajustarla a su etiqueta.`) : L('Tap + next to what you have. That\'s it. The days add up for you.', 'Toca + junto a lo que tienes. Eso es todo. Los días se suman solos.')}</p>
+    <button class="linkish" data-t="calc">${L('How much to store, item by item', 'Cuánto guardar, cosa por cosa')} ›</button></section>
     ${lastChange('pantry') ? `<p class="who-chg">${ic('refresh-cw')}${esc(lastChange('pantry'))}</p>` : ''}
     <div class="list"><div class="stepper" style="padding:10px 16px"><b style="flex:1">${L('Gallons of water stored', 'Galones de agua guardados')}</b><button data-gal="-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val" style="font-size:1.3rem">${P.gal || 0}</span><button data-gal="1" aria-label="${L('More', 'Más')}">+</button></div></div>
     ${useFirst.length ? `<div class="sub-label">${ic('calendar-check')}${L('Use first', 'Úsalos primero')}</div><div class="list">${useFirst.map(x => `<div class="row"><div class="grow"><b>${esc(x.n)}</b><small>${x.e < now.toISOString().slice(0, 7) ? L('Past date: ', 'Ya pasó la fecha: ') : L('Best by ', 'Consumir antes de ')}${mon(x.e)}</small></div></div>`).join('')}</div>` : ''}
-    <div class="sub-label">${ic('package')}${L('Ready to eat', 'Listo para comer')}</div><div class="list">${ready.map(item).join('')}</div>
-    <div class="sub-label">${ic('cooking-pot')}${L('Needs cooking', 'Hay que cocinar')}</div><div class="list">${cook.map(item).join('')}</div>
+    ${ready.length ? `<div class="sub-label">${ic('package')}${L('Ready to eat', 'Listo para comer')}</div><div class="list">${ready.map(item).join('')}</div>` : ''}
+    ${cook.length ? `<div class="sub-label">${ic('cooking-pot')}${L('Needs cooking', 'Hay que cocinar')}</div><div class="list">${cook.map(item).join('')}</div>` : ''}
+    ${more.length ? `<details class="pan-more list" ${has ? '' : 'open'}><summary><span class="lead">${ic('plus')}</span><div class="grow"><b>${L('Common foods', 'Comidas comunes')}</b><small>${more.length} ${L('more you can add with +', 'más que puedes agregar con +')}</small></div>${ic('chevron-down', 'g-chev')}</summary>${more.map(item).join('')}</details>` : ''}
     <button class="list row" data-go="pantrylist"><span class="lead">${ic('clipboard-list')}</span><div class="grow"><b>${L('Paste or upload a list', 'Pegar o subir una lista')}</b><small>${L('Like "Tuna: 12 cans, 5 oz each"', 'Como "Atún: 12 latas, 5 oz cada una"')}</small></div>${ic('chevron-right', 'chev')}</button>
     <div class="sub-label">${ic('plus')}${L('Something else', 'Otra cosa')}</div>
     ${own.length ? `<div class="list">${own.map(item).join('')}</div>` : ''}
@@ -1620,6 +1633,7 @@ function bindPantry(redraw) {
   view.querySelectorAll('[data-gal]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.gal = Math.max(0, (P.gal || 0) + +b.dataset.gal); put(P); }));
   view.querySelectorAll('[data-pq]').forEach(b => b.onclick = () => keep(() => { const [k, d] = b.dataset.pq.split(','), P = get(), x = it(P, k), was = x.q; x.q = Math.max(0, x.q + +d); put(P); if (was > 0 && x.q === 0 && addShop(x.n, 'pantry')) toast(L('Added to the shopping list', 'Se agregó a la lista de compras')); }));
   const own = $('#padd'); if (own) own.onclick = () => { const v = $('#pn').value.trim(); if (!v) return $('#pn').focus(); keep(() => { const P = get(); P.items.push({ k: 'own' + Date.now(), n: v, q: 1, m: 1, c: 0, e: '' }); put(P); }); };
+  view.querySelectorAll('[data-pedit]').forEach(g => { const t = () => { const d = g.closest('.pan-item').querySelector('.pan-edit'); if (d) d.open = !d.open; }; g.onclick = t; g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; });
   view.querySelectorAll('[data-pdel]').forEach(b => b.onclick = () => keep(() => { const P = get(); P.items = P.items.filter(x => x.k !== b.dataset.pdel); put(P); }));
   view.querySelectorAll('[data-pm]').forEach(inp => inp.onchange = () => keep(() => { const P = get(), v = parseFloat(inp.value); it(P, inp.dataset.pm).m = isNaN(v) ? 0 : Math.max(0, v); put(P); }));
   view.querySelectorAll('[data-pe]').forEach(inp => inp.onchange = () => keep(() => { const P = get(); it(P, inp.dataset.pe).e = inp.value || ''; put(P); }));
@@ -1894,7 +1908,7 @@ K.phone = () => {
 
 /* ---------- offline ---------- */
 let swOK = false;
-function setStatus(ok, t) { swOK = ok; const s = $('#status'); if (s) { s.classList.toggle('ok', ok); s.querySelector('span').textContent = t; } }
+function setStatus(ok, t) { swOK = ok; const s = $('#status'); if (s) { s.classList.toggle('ok', ok); s.querySelector('span').textContent = t; s.hidden = false; if (ok) setTimeout(() => { if (s.isConnected) s.hidden = true; }, 4000); } }
 const onlineText = () => navigator.onLine ? L('Works offline', 'Funciona sin internet') : L('Offline · all good', 'Sin internet · todo bien');
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   const hadSW = !!navigator.serviceWorker.controller; let reloaded = false;

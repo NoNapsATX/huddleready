@@ -27,6 +27,17 @@ function fmtDur(ms) { ms = Math.max(0, ms); const h = Math.floor(ms / 3600000), 
 const bar = title => `<header class="bar"><button class="back" data-back aria-label="${L('Back', 'Atrás')}">${ic('arrow-left')}</button><h1>${title}</h1></header>`;
 const fmtDate = ms => new Date(ms).toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric' });
 
+
+/* ---------- temperature: °F by default (Texas), °C if the family prefers ---------- */
+const tUnit = () => store.get('tunit', 'F');
+const cToF = c => Math.round(c * 9 / 5 + 32);
+const tShow = c => tUnit() === 'F' ? cToF(c) + '°F' : Math.round(c) + '°C';
+// any "4°C (40°F)" or "40°F (4°C)" on screen is shown with the family's unit first
+function tFixText(t) { return tUnit() === 'F' ? t.replace(/(-?\d+)\s?°C \((-?\d+)\s?°F\)/g, '$2°F ($1°C)') : t.replace(/(-?\d+)\s?°F \((-?\d+)\s?°C\)/g, '$2°C ($1°F)'); }
+function tFix(root) { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) if (n.nodeValue.includes('°')) { const v = tFixText(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v; } }
+new MutationObserver(() => tFix(view)).observe(view, { childList: true, subtree: true });
+const unitSeg = () => `<div class="seg unit-seg" role="group" aria-label="${L('Temperature unit', 'Unidad de temperatura')}"><button aria-pressed="${tUnit() === 'F'}" data-unit="F">°F</button><button aria-pressed="${tUnit() === 'C'}" data-unit="C">°C</button></div>`;
+function bindUnit(redraw) { view.querySelectorAll('[data-unit]').forEach(b => b.onclick = () => { store.set('tunit', b.dataset.unit); redraw(); }); }
 /* ---------- household ---------- */
 const UTILS = {
   ae: { name: 'Austin Energy', phone: '512-322-9100', text: ['Or text OUT to 287846', 'O envía OUT por texto al 287846'] },
@@ -160,6 +171,9 @@ document.addEventListener('pointerdown', () => { if (unlocked) return; unlocked 
 let info = store.get('info', {});
 const outage = () => store.get('outage', null);
 const outTime = () => store.get('outTime', null);
+// one start time for everything: the "Power out" bar, the food clock and the day check
+function setOutStart(t) { store.set('outTime', t); const o = outage(); if (o && t) { o.start = t; store.set('outage', o); } }
+const localDT = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 
 /* ---------- router ---------- */
 const R = {};
@@ -361,10 +375,17 @@ function checklist(drill) {
   view.innerHTML = `<div class="screen docked${drill ? ' is-drill' : ''}">${bar(title)}${banner}
     <div class="prog"><i style="width:${(i / STEPS.length) * 100}%"></i></div>
     <div class="step"><span class="step-n">${L('Step', 'Paso')} ${i + 1} ${L('of', 'de')} ${STEPS.length}</span><div class="big">${ic(icon)}</div><h2>${t}</h2><p>${d}</p>${action}</div>
+    ${!drill && i === 0 ? (() => { const early = o.early || Date.now() - o.start > 5 * 60000;
+      return `<div class="card when-out"><b>${L('When did the power go out?', '¿Cuándo se fue la luz?')}</b>
+        <div class="seg"><button aria-pressed="${!early}" data-when="now">${L('Just now', 'Ahorita')}</button><button aria-pressed="${early}" data-when="earlier">${L('Earlier', 'Antes')}</button></div>
+        ${early ? `<input type="datetime-local" id="wout" value="${localDT(o.start)}" max="${localDT(Date.now())}" aria-label="${L('Time the power went out', 'Hora en que se fue la luz')}">` : ''}
+        <small class="muted">${L('Out since', 'Sin luz desde')} ${new Date(o.start).toLocaleTimeString(lang === 'es' ? 'es-US' : 'en-US', { hour: 'numeric', minute: '2-digit' })}. ${L('The food clock starts from this time.', 'El reloj de comida cuenta desde esta hora.')}</small></div>`; })() : ''}
     <div class="nav2 sticky"><button class="btn ghost" id="prev" ${i === 0 ? 'disabled style="opacity:.4"' : ''} aria-label="${L('Previous step', 'Paso anterior')}">${ic('arrow-left')}</button><button class="btn ${drill ? '' : 'danger'}" id="next">${ic('check')}${L('Done', 'Hecho')}${i === STEPS.length - 1 ? '' : L(', next', ', sigue')}</button></div></div>`;
   const save = () => { if (!drill) store.set('outage', o); };
   $('#next').onclick = () => { o.step = i + 1; if (o.step >= STEPS.length && !drill) o.done = true; save(); checklist(drill); window.scrollTo(0, 0); };
   $('#prev').onclick = () => { if (i > 0) { o.step = i - 1; save(); checklist(drill); } };
+  view.querySelectorAll('[data-when]').forEach(b => b.onclick = () => { if (b.dataset.when === 'now') { o.early = false; o.start = Date.now(); } else { o.early = true; if (Date.now() - o.start < 5 * 60000) o.start = Date.now() - 30 * 60000; } save(); store.set('outTime', o.start); checklist(false); });
+  const wo = $('#wout'); if (wo) wo.onchange = () => { const v = new Date(wo.value).getTime(); if (!isNaN(v) && v <= Date.now()) { o.start = v; save(); store.set('outTime', v); checklist(false); } };
 }
 R.outage = () => checklist(false);
 R.drill = () => checklist(true);
@@ -372,7 +393,6 @@ R.drill = () => checklist(true);
 /* ---------- stay or go ---------- */
 R.stay = () => {
   const s = Object.assign({ season: new Date().getMonth() >= 4 && new Date().getMonth() <= 8 ? 'hot' : 'cold', temp: null, water: 5, co: false, order: false, sick: false, meds: false }, store.get('stay', {}));
-  if (s.temp == null) s.temp = s.season === 'hot' ? 30 : 17;
   const save = () => store.set('stay', s), n = NEED();
   function judge() {
     let lv = 0; const why = []; const up = (l, m) => { lv = Math.max(lv, l); why.push(m); };
@@ -381,26 +401,33 @@ R.stay = () => {
     if (s.sick) up(3, L('Someone has warning signs. Treat them (Plan › Medical guide), call 911 if confused or drowsy.', 'Alguien tiene señales de alarma. Atiéndelo (Plan › Guía médica) y llama al 911 si está confundido o muy dormido.'));
     if (s.meds) up(2, L("A medicine or device can't be kept going. Go somewhere with power today.", 'Una medicina o equipo no se puede mantener. Vayan hoy a un lugar con electricidad.'));
     const lim = vulnerable() ? 16 : 13;
-    if (s.season === 'cold') { if (s.temp < lim) up(2, L(`Warm room ${s.temp}°C is too cold${lim === 16 ? (hasKids() ? ' for young kids' : ' for older adults') : ''}.`, `El cuarto más tibio está a ${s.temp}°C: demasiado frío${lim === 16 ? (hasKids() ? ' para niños chicos' : ' para personas mayores') : ''}.`)); else if (s.temp < lim + 2) up(1, L(`Warm room ${s.temp}°C. Call Fallback 1 and pack the car.`, `El cuarto más tibio está a ${s.temp}°C. Llama al Plan B 1 y prepara el carro.`)); }
-    else { if (s.temp > 32) up(2, L(`Indoors ${s.temp}°C. Leave by early afternoon.`, `Adentro hace ${s.temp}°C. Salgan antes de media tarde.`)); else if (s.temp >= 29) up(1, L(`Indoors ${s.temp}°C${upstairs() ? ' and upper floors get hotter' : ' and rising'}.`, `Adentro hace ${s.temp}°C${upstairs() ? ' y los pisos de arriba se calientan más' : ' y sigue subiendo'}.`)); }
+    if (s.temp == null) { /* no reading yet: judge only what's known */ }
+    else if (s.season === 'cold') { if (s.temp < lim) up(2, L(`Warm room ${tShow(s.temp)} is too cold${lim === 16 ? (hasKids() ? ' for young kids' : ' for older adults') : ''}.`, `El cuarto más tibio está a ${tShow(s.temp)}: demasiado frío${lim === 16 ? (hasKids() ? ' para niños chicos' : ' para personas mayores') : ''}.`)); else if (s.temp < lim + 2) up(1, L(`Warm room ${tShow(s.temp)}. Call Fallback 1 and pack the car.`, `El cuarto más tibio está a ${tShow(s.temp)}. Llama al Plan B 1 y prepara el carro.`)); }
+    else { if (s.temp > 32) up(2, L(`Indoors ${tShow(s.temp)}. Leave by early afternoon.`, `Adentro hace ${tShow(s.temp)}. Salgan antes de media tarde.`)); else if (s.temp >= 29) up(1, L(`Indoors ${tShow(s.temp)}${upstairs() ? ' and upper floors get hotter' : ' and rising'}.`, `Adentro hace ${tShow(s.temp)}${upstairs() ? ' y los pisos de arriba se calientan más' : ' y sigue subiendo'}.`)); }
     if (s.water < 2) up(2, L('Less than 2 days of water.', 'Quedan menos de 2 días de agua.')); else if (s.water < 3) up(1, L('Water is getting low.', 'Se está acabando el agua.'));
     if (lv >= 1 && n.nocar) why.push(L('No car: line up a ride now, before roads or phones get worse (211, or 311 in Austin).', 'Sin carro: consigan transporte ya, antes de que empeoren las calles o los teléfonos (211, o 311 en Austin).'));
     if (lv >= 1 && n.stairs && upstairs()) why.push(L('Stairs are hard for someone here: leave in daylight, with help.', 'A alguien se le dificultan las escaleras: salgan de día y con ayuda.'));
     if (n.device && !s.meds && lv < 2) why.push(L('Medical device: check how many hours of battery are left.', 'Equipo médico: revisa cuántas horas de batería quedan.'));
     const head = [L('Stay home', 'Quédense en casa'), L('Get ready to leave', 'Prepárense para salir'), L('Go to Fallback 1 today', 'Vayan hoy al Plan B 1'), L('Leave now', 'Salgan ya')][lv];
     const fb = lv >= 2 && info.fallback1 ? `<div class="small">${L('Fallback 1', 'Plan B 1')}: <b>${esc(info.fallback1)}</b></div>` : '';
+    if (s.temp == null && lv === 0) return `<div class="verdict vq"><b>${s.season === 'cold' ? L('How warm is your warmest room?', '¿Qué tan tibio está el cuarto más tibio?') : L('How hot is it inside?', '¿Qué tanto calor hace adentro?')}</b><span>${L('Use a thermometer, or the thermostat if its screen still works. Then tap − or + below.', 'Usa un termómetro, o el termostato si su pantalla todavía funciona. Luego toca − o + abajo.')}</span></div>`;
     return `<div class="verdict v${lv}"><b>${head}</b>${why.length ? '<ul>' + why.map(w => `<li>${w}</li>`).join('') + '</ul>' : `<span>${L('Keep conserving. Check again this evening.', 'Sigan ahorrando. Revisen otra vez en la noche.')}</span>`}${fb}</div>`;
   }
   const tog = (k, t) => `<label class="toggle"><input type="checkbox" data-k="${k}" ${s[k] ? 'checked' : ''}><span>${t}</span></label>`;
   function draw() {
     view.innerHTML = `<div class="screen">${bar(L('Stay or go?', '¿Quedarse o irse?'))}${judge()}
       <div class="seg" role="group" aria-label="${L('Weather', 'Clima')}"><button aria-pressed="${s.season === 'cold'}" data-season="cold">${L('Cold', 'Frío')}</button><button aria-pressed="${s.season === 'hot'}" data-season="hot">${L('Hot', 'Calor')}</button></div>
-      <div class="card"><div class="stepper"><div><b>${s.season === 'cold' ? L('Warmest room', 'Cuarto más tibio') : L('Coolest room', 'Cuarto más fresco')}</b><div class="muted small">${L('Indoor temperature', 'Temperatura adentro')}</div></div><button data-d="temp,-1" aria-label="${L('Lower', 'Bajar')}">−</button><span class="val">${s.temp}°C</span><button data-d="temp,1" aria-label="${L('Higher', 'Subir')}">+</button></div></div>
+      <div class="card"><div class="stepper"><div><b>${s.season === 'cold' ? L('Warmest room', 'Cuarto más tibio') : L('Coolest room', 'Cuarto más fresco')}</b><div class="muted small">${L('Indoor temperature', 'Temperatura adentro')}</div></div><button data-d="temp,-1" aria-label="${L('Lower', 'Bajar')}">−</button><span class="val">${s.temp == null ? '—' : tShow(s.temp)}</span><button data-d="temp,1" aria-label="${L('Higher', 'Subir')}">+</button></div>${unitSeg()}</div>
       <div class="card"><div class="stepper"><div><b>${L('Drinking water', 'Agua para tomar')}</b><div class="muted small">${L('Days left', 'Días que quedan')}</div></div><button data-d="water,-1" aria-label="${L('Less', 'Menos')}">−</button><span class="val">${s.water} ${L('d', 'd')}</span><button data-d="water,1" aria-label="${L('More', 'Más')}">+</button></div></div>
       <div class="label">${L('Any of these?', '¿Alguno de estos?')}</div>
       <div class="list">${tog('co', L('CO alarm, or headaches and dizziness in several people', 'Suena la alarma de monóxido de carbono, o varias personas tienen dolor de cabeza y mareo'))}${tog('order', L('Evacuation order or fire nearby', 'Orden de evacuación o incendio cerca'))}${tog('sick', L('Someone confused, very sleepy or overheated', 'Alguien confundido, muy dormido o con mucho calor'))}${tog('meds', L("A medicine or device can't be kept going", 'Una medicina o equipo no se puede mantener'))}</div></div>`;
-    view.querySelectorAll('[data-season]').forEach(b => b.onclick = () => { s.season = b.dataset.season; s.temp = s.season === 'hot' ? 30 : 17; save(); draw(); });
-    view.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const [k, d] = b.dataset.d.split(','); s[k] = Math.max(0, s[k] + +d); save(); draw(); });
+    view.querySelectorAll('[data-season]').forEach(b => b.onclick = () => { if (s.season !== b.dataset.season) { s.season = b.dataset.season; s.temp = null; } save(); draw(); });
+    view.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const [k, d] = b.dataset.d.split(',');
+      if (k === 'temp') { const start = s.season === 'hot' ? 27 : 20;  // first tap starts from an ordinary indoor reading (80°F / 68°F), not a warning
+        if (s.temp == null) s.temp = start; else if (tUnit() === 'F') s.temp = (cToF(s.temp) + +d - 32) * 5 / 9; else s.temp = Math.round(s.temp) + +d;
+        s.temp = Math.round(s.temp * 100) / 100; }
+      else s[k] = Math.max(0, s[k] + +d); save(); draw(); });
+    bindUnit(draw);
     view.querySelectorAll('.toggle input').forEach(c => c.onchange = () => { s[c.dataset.k] = c.checked; save(); draw(); });
   }
   draw();
@@ -440,10 +467,10 @@ R.food = () => {
         return `<div class="meter"><div class="top"><b>${n}</b><span class="pill p-${c}">${left > 0 ? fmtDur(left) + L(' left', ' restantes') : L('Past safe time', 'Ya no es seguro')}</span></div><div class="track"><i style="width:${f * 100}%;background:${col}"></i></div><small class="muted">${tip}</small></div>`; }).join('')}</div>
       ${NEED().coldmed ? `<p class="muted small" style="padding:0 4px"><b>${L('Cold medicine', 'Medicina fría')}:</b> ${L('check its label for how long it lasts out of the fridge.', 'revisa en la etiqueta cuánto dura fuera del refri.')}</p>` : ''}
       <p class="muted small" style="padding:0 4px">${L('A fridge thermometer at 4°C or below beats any timer. When in doubt, throw it out.', 'Un termómetro en el refri a 4°C (40°F) o menos vale más que cualquier reloj. No los pruebes para saber si están buenos. Si tienes dudas, tíralos.')}</p>
-      <div class="card"><label class="muted small" for="t">${L('Change start time', 'Cambiar hora de inicio')}</label><input type="datetime-local" id="t" value="${local(t)}" style="border:0;background:var(--sunk);border-radius:12px;padding:12px"><button class="btn ghost small" id="clear">${L('Reset clock', 'Reiniciar reloj')}</button></div>${pantryNowHTML()}</div>`;
+      <div class="card"><label class="muted small" for="t">${L('Change start time', 'Cambiar hora de inicio')}</label><input type="datetime-local" id="t" value="${local(t)}" max="${local(Date.now())}" style="border:0;background:var(--sunk);border-radius:12px;padding:12px">${outage() ? `<small class="muted">${L('This also changes the "Power out" time on Home.', 'Esto también cambia la hora de "Sin luz" en Inicio.')}</small>` : `<button class="btn ghost small" id="clear">${L('Reset clock', 'Reiniciar reloj')}</button>`}</div>${pantryNowHTML()}</div>`;
     bindPantryNow(draw);
-    $('#t').onchange = e => { const v = new Date(e.target.value).getTime(); if (!isNaN(v)) { store.set('outTime', v); draw(); } };
-    let armed = false; $('#clear').onclick = e => { if (!armed) { armed = true; e.target.textContent = L('Tap again to reset', 'Toca otra vez para reiniciar'); return; } store.set('outTime', null); draw(); };
+    $('#t').onchange = e => { const v = new Date(e.target.value).getTime(); if (!isNaN(v) && v <= Date.now()) { setOutStart(v); draw(); } };
+    let armed = false; const clr = $('#clear'); if (clr) clr.onclick = e => { if (!armed) { armed = true; e.target.textContent = L('Tap again to reset', 'Toca otra vez para reiniciar'); return; } store.set('outTime', null); draw(); };
   }
   draw(); route.tick = setInterval(() => { if (location.hash === '#food') draw(); }, 60000);
 };
@@ -841,6 +868,7 @@ R.details = () => {
   const sum = [`${h.adults || 0} ${h.adults === 1 ? L('adult', 'adulto') : L('adults', 'adultos')}${h.kids ? `, ${h.kids} ${h.kids > 1 ? L('kids', 'niños') : L('kid', 'niño')} (${L('youngest', 'el menor')} ${AGE_T[h.youngest] || ''})` : ''}`, TYPE_T[h.type] || '', h.heat === 'gas' ? L('some gas', 'con gas') : L('all-electric', 'todo eléctrico'), util().name, h.cross && esc(h.cross), extras.join(', ')].filter(Boolean).join(' · ');
   view.innerHTML = `<div class="screen">${bar(L('Our info', 'Nuestra info'))}${famSeg('details')}
     ${langSeg()}
+    <div class="list unit-row"><div class="grow"><b>${L('Temperature', 'Temperatura')}</b><small>${L('For Stay or go and the guides', 'Para Quedarse o irse y las guías')}</small></div>${unitSeg()}</div>
     <label class="toggle list big-toggle"><input type="checkbox" id="bigt" ${store.get('big', false) ? 'checked' : ''}><span><b>${L('Bigger text', 'Letra más grande')}</b><small>${L('Easier to read in the dark or without glasses', 'Más fácil de leer a oscuras o sin lentes')}</small></span></label>
     ${isInstalled() ? '' : `<button class="list row" data-go="install"><span class="lead">${ic('smartphone')}</span><div class="grow"><b>${L('Install the app', 'Instalar la app')}</b><small>${L('Buttons for Android and iPhone', 'Botones para Android y iPhone')}</small></div>${ic('chevron-right', 'chev')}</button>`}
     <button class="list row" data-go="sheet"><span class="lead">${ic('printer')}</span><div class="grow"><b>${L('Fridge sheet', 'Hoja para el refri')}</b><small>${L('One printable page with your numbers, first steps and what to do next', 'Una página para imprimir con tus teléfonos, primeros pasos y lo que sigue')}</small></div>${ic('chevron-right', 'chev')}</button>
@@ -848,7 +876,7 @@ R.details = () => {
     <button class="list row" data-go="check"><span class="lead">${ic('bell')}</span><div class="grow"><b>${L('Twice-a-year check and reminders', 'Revisión de cada seis meses y recordatorios')}</b><small>${store.get('lastCheck', 0) ? L('Last done ', 'La última fue el ') + fmtDate(store.get('lastCheck', 0)) : L('Add reminders to your calendar', 'Agrega recordatorios a tu calendario')}</small></div>${ic('chevron-right', 'chev')}</button>
     <button class="list row share-row" id="shareapp"><span class="lead">${ic('share-2')}</span><div class="grow"><b>${L('Share the app', 'Compartir la app')}</b><small>${L('Send family and friends the link so they can set up their own plan. None of your details are included.', 'Envía el enlace a familia y amigos para que hagan su propio plan. No incluye ninguno de tus datos.')}</small></div>${ic('chevron-right', 'chev')}</button>
     <button class="list row" data-go="share"><span class="lead">${ic('users')}</span><div class="grow"><b>${L('Share our plan (household only)', 'Compartir nuestro plan (solo la familia de casa)')}</b><small>${L('For a spouse or caregiver who should have your same contacts and meeting spots', 'Para tu pareja o quien cuida a los niños, con los mismos contactos y lugares de reunión')}</small></div>${ic('chevron-right', 'chev')}</button>
-    <p class="muted" style="padding:0 4px">${L('Saved on this phone only. Changes here don\'t update other phones; share again after big changes.', 'Se guarda solo en este teléfono. Los cambios no se pasan solos a otros teléfonos; compártelo otra vez si cambias algo importante.')}</p>
+    <p class="muted" style="padding:0 4px">${syncCfg() ? L('Family sync is on: changes here show up on your other phones.', 'La sincronización familiar está activada: los cambios aquí aparecen en sus otros teléfonos.') : L('Saved on this phone only. Changes here don\'t update other phones; share again after big changes.', 'Se guarda solo en este teléfono. Los cambios no se pasan solos a otros teléfonos; compártelo otra vez si cambias algo importante.')}</p>
     <div class="list">${infoFields().map(([k, t]) => `<label class="field"><span>${t}</span><input id="f-${k}" data-k="${k}" value="${esc(info[k] || '')}" autocomplete="off" ${k === 'phone' ? 'inputmode="tel"' : ''}></label>`).join('')}</div>
     <p class="muted small" style="padding:0 4px">${L('Huddle Ready is a planning aid, not medical advice. In an emergency, call 911.', 'Huddle Ready es una ayuda para planear, no es consejo médico. En una emergencia, llama al 911.')}</p>
     <details class="about"><summary>${ic('info')}${L('About Huddle Ready', 'Acerca de Huddle Ready')}</summary>
@@ -856,7 +884,7 @@ R.details = () => {
       <p><a href="../" target="_blank" rel="noopener">${L('Website, safety and privacy', 'Sitio web, seguridad y privacidad')}</a> · <a href="mailto:hello@huddleready.com">hello@huddleready.com</a></p>
       <p class="muted small">${L('Credits: icons by Lucide (ISC license); illustrations by Microsoft Fluent Emoji (MIT license); voices made with the open Kokoro model and eSpeak NG; nearby places © OpenStreetMap contributors.', 'Créditos: íconos de Lucide (licencia ISC); ilustraciones de Microsoft Fluent Emoji (licencia MIT); voces hechas con el modelo abierto Kokoro y eSpeak NG; lugares cercanos © colaboradores de OpenStreetMap.')}</p>
     </details></div>`;
-  bindLang(R.details);
+  bindLang(R.details); bindUnit(R.details);
   $('#bigt').onchange = e => { store.set('big', e.target.checked); document.documentElement.classList.toggle('big', e.target.checked); };
   $('#shareapp').onclick = shareApp;
   let t; view.querySelectorAll('[data-k]').forEach(inp => inp.oninput = () => { info[inp.dataset.k] = inp.value.trim(); store.set('info', info); clearTimeout(t); t = setTimeout(() => toast(L('Saved', 'Guardado')), 600); });
@@ -1079,7 +1107,7 @@ async function syncNow() {
     store.set('syncErr', 0);
   } catch (e) { store.set('syncErr', Date.now()); }
   syncBusy = false;
-  const st = $('#syncst'); if (st) st.textContent = syncStatus();
+  const st = $('#syncst'); if (st) { st.textContent = syncStatus(); st.classList.toggle('bad', syncBad()); }
 }
 // joining: the family plan (household, contacts) comes from the family copy; lists are combined so nothing on either phone is lost.
 // When both phones have the same pantry item, the larger amount is kept.
@@ -1101,6 +1129,7 @@ const SYNC_LABEL = () => ({ home: L('Household', 'Hogar'), info: L('Contacts and
 function lastChange(k) { if (!syncCfg()) return ''; const t = store.get('syncT', {})[k]; if (!t) return ''; return L('Changed on ', 'Cambiado en ') + whoName(store.get('syncB', {})[k]) + ' · ' + ago(t); }
 // days since this phone last synced, when it's 3 or more (0 otherwise)
 function syncStale() { const c = syncCfg(); if (!c || !c.at) return 0; const d = Math.floor((Date.now() - c.at) / 864e5); return d >= 3 ? d : 0; }
+const syncBad = () => { const c = syncCfg(); return !!c && (!navigator.onLine || store.get('syncErr', 0) > (c.at || 0)); };
 function syncStatus() {
   const c = syncCfg(); if (!c) return '';
   if (!navigator.onLine) return L('Waiting for internet. Changes will sync later.', 'Esperando internet. Los cambios se sincronizan después.');
@@ -1165,7 +1194,7 @@ function syncCardHTML() {
     <p class="muted small" style="margin:0">${L('Your plan is locked (encrypted) on this phone before it is saved online. Only phones with your family link can unlock it.', 'Tu plan se cierra con llave (cifrado) en este teléfono antes de guardarse en internet. Solo los teléfonos con su enlace familiar lo pueden abrir.')}</p></section>`;
   const T = store.get('syncT', {}), B = store.get('syncB', {}), LB = SYNC_LABEL();
   const recent = SYNCED.filter(k => T[k]).sort((a, b) => T[b] - T[a]).slice(0, 4);
-  return `<section class="card sync on"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Sync is on', 'Sincronización activada')} · ${L('code', 'código')} <span class="famcode">${famCode(c)}</span></b><small id="syncst">${syncStatus()}</small></div></div>
+  return `<section class="card sync on"><div class="sync-top"><span class="qa-ic t-green">${ic('refresh-cw')}</span><div class="grow"><b>${L('Sync is on', 'Sincronización activada')} · ${L('code', 'código')} <span class="famcode">${famCode(c)}</span></b><small id="syncst" class="${syncBad() ? 'bad' : ''}">${syncStatus()}</small></div></div>
     <p class="muted small" style="margin:0">${L('Every phone in your family should show the same code.', 'Todos los teléfonos de la familia deben mostrar el mismo código.')}</p>
     <label class="field"><span>${L('This phone\'s name', 'Nombre de este teléfono')}</span><input id="dname" maxlength="24" placeholder="${L("e.g. Dad's phone", 'ej. Teléfono de papá')}" value="${esc(devName())}"></label>
     <div class="grid2"><button class="btn" id="syqr">${ic('qr-code')}${L('QR code', 'Código QR')}</button><button class="btn" id="sysend">${ic('share-2')}${L('Send link', 'Enviar enlace')}</button></div>

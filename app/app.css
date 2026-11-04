@@ -780,3 +780,11 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))
 .seg-n{position:absolute;top:-6px;right:-2px;box-shadow:0 0 0 2px var(--sunk)}
 @media (max-width:360px){.seg button{padding:10px 2px;font-size:.8rem}}
 .seg button{white-space:normal;min-width:0;padding:10px 4px;line-height:1.15;overflow-wrap:anywhere}
+/* fixes: family code readable in dark mode; sync problems in warning color, not green */
+.famcode{background:var(--sunk);color:var(--ink)}
+.sync.on .sync-top small.bad{color:var(--warn)}
+/* stay or go: no reading yet */
+.verdict.vq{background:var(--sunk)}.verdict.vq span{color:var(--muted)}
+.unit-seg{width:112px;margin:10px 0 0 auto}.unit-seg button{padding:8px 4px}
+.unit-row{display:flex;align-items:center;gap:12px;padding:12px 16px}.unit-row .grow{display:grid;gap:2px}.unit-row small{color:var(--muted)}.unit-row .unit-seg{margin:0;flex:none}
+.when-out{display:grid;gap:10px;margin-top:12px}.when-out input{border:0;background:var(--sunk);border-radius:12px;padding:12px;font:inherit;color:inherit}

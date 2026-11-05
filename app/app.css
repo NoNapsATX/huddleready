@@ -805,3 +805,17 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))
 .stat.risk-red .ic{color:var(--danger)}.stat.risk-amber .ic{color:var(--warn)}
 .home .home-top .brand{white-space:normal;overflow:visible;font-size:1.3rem;line-height:1.15}
 @media (min-width:361px){.home .home-top .brand{white-space:nowrap}}
+/* review batch 3 */
+.opts.two{grid-template-columns:1fr 1fr}.opts.two .opt:last-child:nth-child(odd){grid-column:1/-1}
+.jump{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px;scrollbar-width:none}.jump::-webkit-scrollbar{display:none}
+.jump button{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:0 14px;min-height:40px;font:inherit;font-size:.88rem;font-weight:600;white-space:nowrap}
+.docked .step{gap:16px}
+.docked .step h2{font-size:2rem;line-height:1.15}
+.docked .step p{font-size:1.3rem;line-height:1.45;color:var(--ink);max-width:32ch}
+.docked .step .step-call{width:100%;margin-top:6px}
+.fc-top{display:grid;gap:6px}.fc-top .bigtime{font-size:3rem}
+.fc-ok .bigtime{color:var(--ok)}.fc-warn .bigtime{color:var(--warn)}.fc-bad .bigtime{color:var(--danger);font-size:1.6rem}
+.meter .pill{font-size:.95rem;padding:4px 12px}
+.setup #snext{position:sticky;bottom:max(12px,env(safe-area-inset-bottom));z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.jump{flex-wrap:wrap;overflow:visible;padding:2px 0 4px;margin:0}
+.jump button{white-space:normal;text-align:left;max-width:100%;min-height:40px;padding:8px 14px;line-height:1.2}
